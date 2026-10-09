@@ -36,6 +36,14 @@ r=await call('/api/candy');index=r.state.jar.candies[0].index;
 fs.writeFileSync(path.join(data,'reply.json'),JSON.stringify({text:'我尝一下',sticker_id:null,candy_action:{action:'eat',index,day}}));await call('/api/chat','POST',{text:'你也吃一颗'});r=await call('/api/candy');assert.equal(r.state.jar.candies.length,17);
 const messages=(await call('/api/messages')).messages;assert(messages.at(-1).text.includes('他从糖罐里吃了一颗'));assert(!messages.at(-1).text.includes('candy_action'));
 const exported=await call('/api/export');assert.equal(exported.candy.save.jar.candies.length,17);
+// A regenerated reply must not consume a second candy in the same user turn.
+const {DatabaseSync}=require('node:sqlite');const testDb=new DatabaseSync(path.join(data,'home.db'));
+const lastTurn=testDb.prepare("SELECT turn_id FROM messages WHERE role='me' ORDER BY id DESC LIMIT 1").get().turn_id;
+assert.equal(JSON.parse(testDb.prepare("SELECT value FROM kv WHERE key='candyActionTurn'").get().value),lastTurn);
+const regeneratedIndex=(await call('/api/candy')).state.jar.candies[0].index;
+fs.writeFileSync(path.join(data,'reply.json'),JSON.stringify({text:'重新回复',sticker_id:null,candy_action:{action:'eat',index:regeneratedIndex,day}}));
+const lastMessage=messages.at(-1);assert.equal((await call('/api/life/messages/'+lastMessage.id+'/regenerate','POST')).code,200);
+await call('/api/chat','POST',{retry:true});assert.equal((await call('/api/candy')).state.jar.candies.length,17);testDb.close();
 // Expiry is enforced by server time, not browser presentation.
 save=JSON.parse(fs.readFileSync(path.join(data,'candyjar_save.json'),'utf8'));save.active.forEach(a=>a.expires='2000-01-01T00:00:00');fs.writeFileSync(path.join(data,'candyjar_save.json'),JSON.stringify(save));assert.equal((await call('/api/candy')).state.active.length,0);
 // Corrupt saves are preserved and fail closed.

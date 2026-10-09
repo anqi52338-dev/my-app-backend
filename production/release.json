@@ -1,7 +1,7 @@
 {
-  "snapshot": "20261009T145755Z",
+  "snapshot": "20261009T150608Z",
   "sha256": {
-    "server.js": "12515f4333390ca717761d8bf1044adf6979a80d26ca446bb1e6261f289a3007",
+    "server.js": "77caca361658ccb02221c099d47034b2354eaca93fa10115d5b1b5f488dc7180",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
@@ -27,7 +27,7 @@
     "public/reading.js": "ce1474fa2348dbf04cdaefdc5ecf0c3fe02159137d17581c46f45bc2bce1ab53",
     "public/stickers.css": "37529581eab1182ca406b68bba72cc6a63a1ab7c78393b77399dbd148ad79c2f",
     "public/voice.css": "5ad12e8ec707b531dbea548404e8b9eb9ae6a4d7a58f3bcb09b384f4bf601fc1",
-    "candy.js": "3c4ecc4284d150a88b994881fa91514ca290a6d660b507bded3df770b06b4524",
+    "candy.js": "9c30675f3471136228eae10845adda5c88025b22059ce0f439c1161ce49a6bb4",
     "candyjar/bridge.py": "cd6e7eeedcc7ebd532c3e08f3912c8a1a6ddfd26ebecd07af9a73f653f3811fb",
     "candyjar/candyjar.py": "363d7b3c016fa5d20997fa24a4a32ecc78dee2861f65aa90f3ec189bcad47bd1",
     "candyjar/candies.json": "a241f971328beb79b6e1f416af5842f13140d70f2144e7d76c47dade3c383702",

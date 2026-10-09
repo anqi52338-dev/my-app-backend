@@ -23,17 +23,19 @@ module.exports=function({data,kv,readBody,json,fail,isBusy}) {
     if(prefs().autonomous&&r.jar){tools='\n【糖罐动作】你可以选择拿一颗糖自己吃，或提出喂她。只在有趣且合适时使用，不必每次。沿用回复 JSON 格式并可增加 candy_action 字段：{"action":"eat"或"feed","index":数字编号,"day":"'+r.day+'"}。eat 会真的消耗一颗，效果从下次聊天开始；feed 仅发邀请，必须等她在页面接受。可选糖的外观（吃前不知道效果）：'+JSON.stringify(r.jar.candies.map(c=>({index:c.index,shop:c.shop})))+'。不操作时省略 candy_action。';}
     return control+'\n'+(r.context||'本轮没有糖果效果。')+tools;
   }
-  async function applyAction(raw) {
+  async function applyAction(raw,turnKey) {
     if(!prefs().enabled||!prefs().autonomous)return '';
+    if(!turnKey||kv.get('candyActionTurn',null)===turnKey)return '';
     let b;try{b=JSON.parse(String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'' )).candy_action;}catch{return '';}
     if(!b||!['eat','feed'].includes(b.action)||!Number.isInteger(b.index))return '';
     try{
       const r=await call({action:'state'});
       if(b.day!==r.state.day||!r.state.jar?.candies.some(c=>c.index===b.index))return '';
       if(b.action==='feed'){
-        kv.set('candyOffer',{day:b.day,index:b.index,at:Date.now()});return '（他递来一颗糖，等你在糖果罐里决定要不要接受。）';
+        kv.set('candyOffer',{day:b.day,index:b.index,at:Date.now()});kv.set('candyActionTurn',turnKey);return '（他递来一颗糖，等你在糖果罐里决定要不要接受。）';
       }
       const eaten=await call({action:'eat',who:'ai',target:'ai',index:b.index});
+      kv.set('candyActionTurn',turnKey);
       return '（他从糖罐里吃了一颗。'+eaten.receipt.split('\n')[0].replace(/^你/,'他')+' 糖果效果会在下一次回复生效。）';
     }catch{return '（这颗糖没有拿到，可以打开糖果罐看看。）';}
   }

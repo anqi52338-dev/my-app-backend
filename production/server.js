@@ -162,7 +162,7 @@ async function generateReply() {
       }
     }
     const reply = stickerSystem.decode(text);
-    const candyNote = await candySystem.applyAction(text);
+    const candyNote = await candySystem.applyAction(text, String(last.turn_id || last.id));
     if (candyNote) reply.text = [reply.text, candyNote].filter(Boolean).join('\n\n');
     if (!reply.text && !reply.sticker) throw new Error('他这次没有给出有效回复，请再试一次');
     const turnId = crypto.randomUUID(), messages = [];
