@@ -1,0 +1,20 @@
+
+# Private runtime data
+node_modules/
+data/
+workspace/
+uploads/
+vendor/
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+voice-config.json
+cc-*.json
+cc-*.md
+cc-*.sh
+hook.json
+*.backup*
+__pycache__/
+*.pyc

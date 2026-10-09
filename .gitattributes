@@ -1,0 +1,6 @@
+# Preserve exact production bytes across Windows and Linux
+/production/** -text whitespace=cr-at-eol
+/production/public/** -whitespace
+/production/*.js -whitespace
+/production/*.py -whitespace
+/production/hooks/** -whitespace

@@ -1,0 +1,34 @@
+{
+  "snapshot": "20261009T132420Z",
+  "sha256": {
+    "server.js": "6c9c99ced9e48417e10b4d1660f728b6c03914d06e320936dbe5edee701e3d72",
+    "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
+    "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
+    "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
+    "stickers.js": "1110dc77c7b5f94dc27dfabef6a8c6075c72029596532449fb76e38dc0be500b",
+    "voice.js": "d24c6659c3b54644065637ad5862a65d661baab92b2ba23bf5ac59a46ef6e131",
+    "life.js": "3112c1bd45e1a1af91cc81a235ca08567f89bce45f03f57c765a13d8d4c6278d",
+    "isolated.js": "15cdbbbdcb557dfa68d9a5f0c0c38c1baa62350aabf374fb4b7c998b0308294f",
+    "parse_epub.py": "a2e89f4171cfece967d00492e3dc3423670b6e4f7ef79a342b93a9a5cd3d536b",
+    "sticker-thumbnail.py": "60e3fbe2e02fead71cd8d6e73764b76a0770f3b05036440fcd7416cbc392cf38",
+    "hooks/hook.cjs": "ffd42e2283c5de9e83334070fec61002b45d23f7f397c1f2c47d497446b5c2fe",
+    "public/app.js": "993852e821190f5685883d02a790e8b507e9ceec6c620ffc75c7b3033e61df53",
+    "public/bunny.js": "ec5286246c86b04ef411c7331d09056856d20b7580ce111dc854cac098998427",
+    "public/fonts/cormorant-500.woff2": "8197bf53615ddc8c423f444c7f0eec63b7fa0ba093fcfbec60dfdd28429b0fc8",
+    "public/fonts/cormorant-500i.woff2": "4fb55a7a6d564d428061fe12c82c896264bcc8b7f0b52840bf88e0db5b91256f",
+    "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
+    "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
+    "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
+    "public/index.html": "50e3b0bd0b8b6fefe77baf22f43e52a5b1667cf4734ecd0e2dfffec2a8708b8e",
+    "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
+    "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
+    "public/manifest.webmanifest": "e850a3232d5fcf3b3ec1aa1abe3ac1ffdca4a15197a0f1ddb01fd32a218db0f6",
+    "public/reading.css": "39b70637e345655888763e39073878ed302d1c7908747e0c8f3faf488a8a151b",
+    "public/reading.js": "ce1474fa2348dbf04cdaefdc5ecf0c3fe02159137d17581c46f45bc2bce1ab53",
+    "public/stickers.css": "37529581eab1182ca406b68bba72cc6a63a1ab7c78393b77399dbd148ad79c2f",
+    "public/voice.css": "5ad12e8ec707b531dbea548404e8b9eb9ae6a4d7a58f3bcb09b384f4bf601fc1"
+  },
+  "pythonDependencies": {
+    "pillow": "12.3.0"
+  }
+}
