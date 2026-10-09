@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Our Home backup at 03:30 Asia/Shanghai
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=120
+Unit=our-home-backup.service
+
+[Install]
+WantedBy=timers.target

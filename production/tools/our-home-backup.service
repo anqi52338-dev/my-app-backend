@@ -1,0 +1,13 @@
+[Unit]
+Description=Encrypted Our Home data backup and integrity verification
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+UMask=0077
+ExecStart=/usr/bin/python3 /home/ubuntu/our-home/tools/data-backup.py
+TimeoutStartSec=1800
+Nice=10
+NoNewPrivileges=true
+PrivateTmp=true
