@@ -125,7 +125,7 @@ def main():
                         raise RuntimeError('SQLite integrity check failed')
             for path in sorted((app / 'data').rglob('*')):
                 relative = path.relative_to(app / 'data')
-                if relative.parts[0] == 'backups' or path.name in ('home.db', 'home.db-wal', 'home.db-shm'):
+                if relative.parts[0] == 'backups' or path.name in ('home.db', 'home.db-wal', 'home.db-shm') or (path.name.startswith('.candyjar-') and path.suffix == '.json'):
                     continue
                 if path.is_symlink():
                     raise RuntimeError('Data symlink requires an explicit backup decision: ' + str(relative))

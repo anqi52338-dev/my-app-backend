@@ -101,9 +101,9 @@ function backupContext(extra) {
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
 }
-async function backupChat(last) {
+async function backupChat(last, candyContext) {
   const messages = backupContext();
-  messages[0].content += stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
+  messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
   if (last?.image) {
     // 最后一条带图：先试着把图一起发，模型不支持看图就退回纯文字
     const file = path.join(UPLOADS, stickerSystem.thumbnail(last));
@@ -130,6 +130,8 @@ const lifeSystem = require('./life')({ db, kv, readBody, json: (...args) => json
   }
 });
 
+const candySystem = require('./candy')({ data: DATA, kv, readBody, json: (...args) => json(...args), fail: (...args) => fail(...args), isBusy: () => busy });
+
 const readingRoute = require('./reading')({ db, readBody, json: (...args) => json(...args), fail: (...args) => fail(...args), compose });
 
 // ===== 聊天 =====
@@ -143,22 +145,25 @@ async function generateReply() {
   let partial = '';
   try {
     let text; let src = 'claude';
+    const candyContext = await candySystem.context().catch(() => '\n【糖罐】暂时无法读取状态，按普通人设回复，本轮不要使用糖罐动作。');
     if (backup().chat && backupReady()) {
       emit({ type: 'status', text: '在想…' });
-      text = await backupChat(last); src = 'backup';
+      text = await backupChat(last, candyContext); src = 'backup';
     } else {
       const current = last.turn_id ? db.prepare('SELECT * FROM messages WHERE archived=0 AND turn_id = ? ORDER BY id').all(last.turn_id) : [last];
-      const body = '【角色状态】你们设定的小状态是“' + lifeSystem.prefs().mood + '”，仅作角色表达，不代表真实感受。\n' + current.map(m => chatDescription(m)).join('\n') + (last.image ? `\n（图片首帧在：${path.join(UPLOADS, stickerSystem.thumbnail(last))}）` : '') + stickerSystem.prompt();
+      const body = '【角色状态】你们设定的小状态是“' + lifeSystem.prefs().mood + '”，仅作角色表达，不代表真实感受。\n' + current.map(m => chatDescription(m)).join('\n') + (last.image ? `\n（图片首帧在：${path.join(UPLOADS, stickerSystem.thumbnail(last))}）` : '') + stickerSystem.prompt() + candyContext;
       try {
         const r = await askClaude(body, { excludeId: last.id, onDelta: (t) => { partial = t; if (!/^\s*(?:```(?:json)?\s*)?\{/.test(t)) emit({ type: 'delta', text: t }); }, onStatus: (t) => emit({ type: 'status', text: t }) });
         text = r.text;
       } catch (e) {
         if (!backupReady() || partial) throw e;
         emit({ type: 'status', text: '订阅那边没回应，改走备用线路…' });
-        text = await backupChat(last); src = 'backup';
+        text = await backupChat(last, candyContext); src = 'backup';
       }
     }
     const reply = stickerSystem.decode(text);
+    const candyNote = await candySystem.applyAction(text);
+    if (candyNote) reply.text = [reply.text, candyNote].filter(Boolean).join('\n\n');
     if (!reply.text && !reply.sticker) throw new Error('他这次没有给出有效回复，请再试一次');
     const turnId = crypto.randomUUID(), messages = [];
     db.exec('BEGIN');
@@ -308,6 +313,7 @@ async function route(req, res) {
     return issue(res);
   }
   if (!authed(req)) throw fail(401, '请先输入口令');
+  if (await candySystem.route(req, res, url)) return;
   if (await lifeSystem.route(req, res, url)) return;
   if (await voiceSystem.route(req, res, url)) return;
   if (await readingRoute(req, res, url)) return;
@@ -436,7 +442,7 @@ async function route(req, res) {
 
 
   if (key === 'GET /api/export') {
-    const data = { life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
+    const data = { candy: await candySystem.export(), life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="our-home-${new Date().toISOString().slice(0, 10)}.json"` });
     return res.end(JSON.stringify(data, null, 2));
   }
