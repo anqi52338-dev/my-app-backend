@@ -106,25 +106,31 @@ function backupContext(extra) {
   const p = profile();
   const history = db.prepare('SELECT * FROM messages WHERE archived=0 ORDER BY id DESC LIMIT 30').all().reverse();
   const system = `${p.persona}${emotion.prompt(p)}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然、简短，不要用 Markdown。\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
-  const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: chatDescription(m).trim() || '[图片]' }))];
+  const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m) }))];
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
+}
+function backupContent(message) {
+  const text = chatDescription(message).trim() || '看看这张图';
+  if (message.role !== 'me' || !message.image || message.type === 'sticker') return text;
+  const name = message.image;
+  if (path.basename(name) !== name) throw new Error('图片文件名无效，请重新上传');
+  const file = path.join(UPLOADS, name);
+  if (!fs.existsSync(file)) throw new Error('聊天里的图片文件已丢失，请重新上传；本次没有发送纯文字替代请求');
+  const mime = {'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.gif':'image/gif'}[path.extname(name).toLowerCase()];
+  if (!mime) throw new Error('这张图片格式暂不支持，请改用 JPG、PNG、WebP 或 GIF');
+  const bytes = fs.readFileSync(file);
+  return [{type:'text',text}, {type:'image_url',image_url:{url:`data:${mime};base64,${bytes.toString('base64')}`}}];
 }
 async function backupChat(last, candyContext) {
   const messages = backupContext();
   messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
-  if (last?.image) {
-    // 最后一条带图：先试着把图一起发，模型不支持看图就退回纯文字
-    const file = path.join(UPLOADS, stickerSystem.thumbnail(last));
-    const url = `data:image/${path.extname(file).slice(1).replace('jpg', 'jpeg')};base64,${fs.readFileSync(file).toString('base64')}`;
-    const withImage = [...messages.slice(0, -1), { role: 'user', content: [{ type: 'text', text: stickerSystem.describe(last) || '看看这张图' }, { type: 'image_url', image_url: { url } }] }];
-    try { return await backupComplete(withImage); } catch {}
-  }
+  // Keep image blocks in every selected history turn; never silently retry without them.
   return backupComplete(messages);
 }
 // 生成一段不进聊天记录的文字（日记、朋友圈、评论）
 async function compose(task, image) {
-  if (backup().chat && backupReady()) return backupComplete(backupContext('【系统任务】' + task));
+  if (backup().chat && backupReady()) { const messages = backupContext(); messages.push({role:'user',content:backupContent({role:'me',text:'【系统任务】'+task,image})}); return backupComplete(messages); }
   const note = image ? `\n（她附的图片在这里：${path.join(UPLOADS, image)}）` : '';
   return (await askClaude('【系统任务】' + task + note)).text;
 }
@@ -162,7 +168,7 @@ async function generateReply() {
       const current = last.turn_id ? db.prepare('SELECT * FROM messages WHERE archived=0 AND turn_id = ? ORDER BY id').all(last.turn_id) : [last];
       const body = '【角色状态】你们设定的小状态是“' + lifeSystem.prefs().mood + '”，仅作角色表达，不代表真实感受。\n' + current.map(m => chatDescription(m)).join('\n') + (last.image ? `\n（图片首帧在：${path.join(UPLOADS, stickerSystem.thumbnail(last))}）` : '') + stickerSystem.prompt() + candyContext;
       try {
-        const r = await askClaude(body, { excludeId: last.id, onDelta: (t) => { partial = t; if (!/^\s*(?:```(?:json)?\s*)?\{/.test(t)) emit({ type: 'delta', text: t }); }, onStatus: (t) => emit({ type: 'status', text: t }) });
+        const r = await askClaude(body, { excludeId: last.id, onDelta: (t) => { partial = t; /* Structured replies are published only after decoding. */ }, onStatus: (t) => emit({ type: 'status', text: t }) });
         text = r.text;
       } catch (e) {
         if (!backupReady() || partial) throw e;
@@ -171,7 +177,7 @@ async function generateReply() {
       }
     }
     const reply = stickerSystem.decode(text);
-    const candyNote = await candySystem.applyAction(text, String(last.turn_id || last.id));
+    const candyNote = await candySystem.applyAction(reply.candyAction || text, String(last.turn_id || last.id));
     if (candyNote) reply.text = [reply.text, candyNote].filter(Boolean).join('\n\n');
     if (!reply.text && !reply.sticker) throw new Error('他这次没有给出有效回复，请再试一次');
     const turnId = crypto.randomUUID(), messages = [];

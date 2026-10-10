@@ -20,13 +20,13 @@ module.exports=function({data,kv,readBody,json,fail,isBusy}) {
     if(!prefs().enabled)return control+'本轮糖果聊天效果已关闭，按普通人设回应。';
     const r=await call({action:'context'});
     let tools='';
-    if(prefs().autonomous&&r.jar){tools='\n【糖罐动作】你可以选择拿一颗糖自己吃，或提出喂她。只在有趣且合适时使用，不必每次。沿用回复 JSON 格式并可增加 candy_action 字段：{"action":"eat"或"feed","index":数字编号,"day":"'+r.day+'"}。eat 会真的消耗一颗，效果从下次聊天开始；feed 仅发邀请，必须等她在页面接受。可选糖的外观（吃前不知道效果）：'+JSON.stringify(r.jar.candies.map(c=>({index:c.index,shop:c.shop})))+'。不操作时省略 candy_action。';}
+    if(prefs().autonomous&&r.jar){tools='\n【糖罐动作】你可以选择拿一颗糖自己吃，或提出喂她。只在有趣且合适时使用，不必每次。沿用回复 JSON 格式并可增加 candy_action 字段：{"action":"eat"或"feed","index":数字编号,"day":"'+r.day+'"}。eat 会真的消耗一颗，效果从下次聊天开始；feed 仅发邀请，必须等她在页面接受。可选糖的外观（吃前不知道效果）：'+JSON.stringify(r.jar.candies.map(c=>({index:c.index,shop:c.shop})))+'。不操作时省略 candy_action。candy_action 必须是同一个回复 JSON 对象内的字段，禁止在正文后追加第二个 JSON、代码块或说明；text 只放对她说的话。';}
     return control+'\n'+(r.context||'本轮没有糖果效果。')+tools;
   }
   async function applyAction(raw,turnKey) {
     if(!prefs().enabled||!prefs().autonomous)return '';
     if(!turnKey||kv.get('candyActionTurn',null)===turnKey)return '';
-    let b;try{b=JSON.parse(String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'' )).candy_action;}catch{return '';}
+    let b;if(raw&&typeof raw==='object')b=raw;else try{b=JSON.parse(String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'' )).candy_action;}catch{return '';}
     if(!b||!['eat','feed'].includes(b.action)||!Number.isInteger(b.index))return '';
     try{
       const r=await call({action:'state'});

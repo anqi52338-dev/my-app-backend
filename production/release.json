@@ -1,11 +1,11 @@
 {
-  "snapshot": "20261010T035733Z",
+  "snapshot": "20261010T052801Z",
   "sha256": {
-    "server.js": "1502df08cbc2de412f826bd54a3e9de2a91e4a82a6c348e0b4ca522998d4c713",
+    "server.js": "ea83d3b5087d3c4a59550351e506b302988a7b72cf6f93c31415597a68170e76",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
-    "stickers.js": "1110dc77c7b5f94dc27dfabef6a8c6075c72029596532449fb76e38dc0be500b",
+    "stickers.js": "f5a9737fd3accab646abbd8baa4dd49e2bfe5e512a7e93925888bb678445b86c",
     "voice.js": "d24c6659c3b54644065637ad5862a65d661baab92b2ba23bf5ac59a46ef6e131",
     "life.js": "3112c1bd45e1a1af91cc81a235ca08567f89bce45f03f57c765a13d8d4c6278d",
     "isolated.js": "15cdbbbdcb557dfa68d9a5f0c0c38c1baa62350aabf374fb4b7c998b0308294f",
@@ -27,7 +27,7 @@
     "public/reading.js": "ce1474fa2348dbf04cdaefdc5ecf0c3fe02159137d17581c46f45bc2bce1ab53",
     "public/stickers.css": "37529581eab1182ca406b68bba72cc6a63a1ab7c78393b77399dbd148ad79c2f",
     "public/voice.css": "5ad12e8ec707b531dbea548404e8b9eb9ae6a4d7a58f3bcb09b384f4bf601fc1",
-    "candy.js": "9c30675f3471136228eae10845adda5c88025b22059ce0f439c1161ce49a6bb4",
+    "candy.js": "58b1112a3b53c57392a91f67b235622d9f4bbbcee042c49dccb7a3930190c27f",
     "candyjar/bridge.py": "cd6e7eeedcc7ebd532c3e08f3912c8a1a6ddfd26ebecd07af9a73f653f3811fb",
     "candyjar/candyjar.py": "363d7b3c016fa5d20997fa24a4a32ecc78dee2861f65aa90f3ec189bcad47bd1",
     "candyjar/candies.json": "a241f971328beb79b6e1f416af5842f13140d70f2144e7d76c47dade3c383702",
