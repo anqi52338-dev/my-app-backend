@@ -43,7 +43,15 @@ module.exports = function createStickers({db, uploads, readBody, json, fail}) {
     }
     output+=source.slice(cursor);
     if(!cursor&&/^\s*(?:```(?:json)?\s*)?\{/.test(source))output='';
-    const text=output.replace(/\[sticker:(\d+)\]/gi,(_,id)=>{if(!sticker)sticker=allowed(id,'assistant');return '';}).trim();
+    let text=output.replace(/\[sticker:(\d+)\]/gi,(_,id)=>{if(!sticker)sticker=allowed(id,'assistant');return '';}).trim();
+    // Collapse only an entire, substantial reply repeated verbatim, ignoring whitespace.
+    const characters=[...text.matchAll(/\S/g)],normalized=characters.map(m=>m[0]).join('');
+    for(let repeats=4;repeats>=2;repeats--){
+      const length=normalized.length/repeats;
+      if(Number.isInteger(length)&&length>=8&&normalized.slice(0,length).repeat(repeats)===normalized){
+        text=text.slice(0,characters[length-1].index+1).trim();break;
+      }
+    }
     return {text,sticker,candyAction};
   }
   const validMetadata=b=>{

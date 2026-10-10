@@ -346,6 +346,7 @@ async function route(req, res) {
   if (key === 'POST /api/chat') {
     if (busy) throw fail(409, '他还在回上一句');
     const body = await readBody(req);
+    if (busy) throw fail(409, '他还在回上一句'); // Recheck after receiving the body.
     if (lifeSystem.prefs().blocked && !body.smallNote) throw fail(403, '模拟拉黑中，普通消息暂不发送。可以在生活手账里发一张小纸条，或解除拉黑。');
     if (body.smallNote && (!body.text || body.text.length > 1000 || body.image || body.sticker_id)) throw fail(400, '小纸条只能写 1 到 1000 字');
     const users = [];

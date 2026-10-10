@@ -3,7 +3,14 @@ const root=process.argv[2]||path.resolve(__dirname,'..');
 const memory=new DatabaseSync(':memory:');memory.exec("CREATE TABLE stickers(id INTEGER PRIMARY KEY,name TEXT,image TEXT,ts INTEGER);CREATE TABLE messages(id INTEGER PRIMARY KEY,text TEXT,image TEXT)");
 const stickers=require(path.join(root,'stickers'))({db:memory});
 for(const [raw,expected] of [['{"text":"你好","sticker_id":null,"candy_action":{"action":"eat","index":0}}','你好'],['你好\n```json\n{"text":"再说一句","sticker_id":null}\n```','你好\n再说一句'],['你好\n{"candy_action":{"action":"feed","index":1}}','你好'],['{"text":"带有 {括号} 和 \\"引号\\"","sticker_id":null}','带有 {括号} 和 "引号"'],['普通回复','普通回复']])assert.equal(stickers.decode(raw).text,expected);
-assert.equal(stickers.decode('你好\n{"candy_action":{"action":"feed","index":1}}').candyAction.action,'feed');memory.close();
+assert.equal(stickers.decode('你好\n{"candy_action":{"action":"feed","index":1}}').candyAction.action,'feed');for(const reply of ['这是完整的一段回复，宝宝。','第一句说完。\n\n再说第二句，安安。']) {
+ assert.equal(stickers.decode(reply+'\n\n'+reply).text,reply);
+ assert.equal(stickers.decode(reply+reply).text,reply);
+ assert.equal(stickers.decode(JSON.stringify({text:reply+'\n\n'+reply,sticker_id:null})).text,reply);
+}
+assert.equal(stickers.decode('好好好').text,'好好好');
+assert.equal(stickers.decode('先说这一句。\n\n再说不同的一句。').text,'先说这一句。\n\n再说不同的一句。');
+memory.close();
 const data=fs.mkdtempSync(path.join(os.tmpdir(),'vision-regression-'));const preload=path.join(data,'preload.cjs');fs.writeFileSync(preload,`const id=require.resolve(${JSON.stringify(path.join(root,'claude.js'))});require.cache[id]={exports:{configure(){},status:async()=>({running:false}),restartNext(){}}};`);
 let payloads=[],mode='ok';const provider=http.createServer(async(req,res)=>{let text='';for await(const chunk of req)text+=chunk;payloads.push(JSON.parse(text));res.setHeader('content-type','application/json');if(mode==='error'){res.statusCode=400;res.end(JSON.stringify({error:{message:'fixture image rejected'}}));}else res.end(JSON.stringify({choices:[{message:{content:'正常回复\n```json\n{"text":"糖果回复","sticker_id":null}\n```'}}]}));});
 (async()=>{await new Promise(r=>provider.listen(3138,'127.0.0.1',r));const child=spawn(process.execPath,['--require',preload,path.join(root,'server.js')],{env:{...process.env,HOME_DATA:data,PORT:'3137',PYTHON:process.env.PYTHON||'python3'},stdio:['ignore','ignore','pipe']});let err='';child.stderr.on('data',b=>err+=b);let cookie='';
