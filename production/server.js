@@ -39,7 +39,11 @@ const kv = {
 };
 if (!kv.get('secret')) kv.set('secret', crypto.randomBytes(24).toString('hex'));
 const profile = () => ({ emotionEnabled: true, emotionRules: emotion.DEFAULT_RULES, hisName: '哥哥', persona: DEFAULT_PERSONA, bg: 'damask', model: 'default', myAv: '', hisAv: '', ...kv.get('profile', {}) });
-const backup = () => ({ baseUrl: '', key: '', model: '', chat: false, memory: true, ...kv.get('backup', {}) });
+const backup = () => {
+  const saved = kv.get('backup', {});
+  const maxTokens = Number.isInteger(saved.maxTokens) && saved.maxTokens >= 256 && saved.maxTokens <= 4000 ? saved.maxTokens : 2048;
+  return { baseUrl: '', key: '', model: '', chat: false, memory: true, ...saved, maxTokens };
+};
 const backupReady = () => { const b = backup(); return !!(b.baseUrl && b.key && b.model); };
 const addMessage = (role, text, image, src, type = 'text', turnId = crypto.randomUUID(), stickerId = null, quote = null) => {
   const ts = Date.now();
@@ -86,12 +90,16 @@ async function backupComplete(messages) {
   const res = await fetch(b.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
     method: 'POST', signal: AbortSignal.timeout(120000),
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + b.key },
-    body: JSON.stringify({ model: b.model, messages, stream: false }),
+    body: JSON.stringify({ model: b.model, messages, stream: false, max_tokens: b.maxTokens }),
   });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 402) throw new Error('API 余额或密钥可用预算不足以覆盖本次请求。可先降低最大输出长度；如果仍失败，再检查账户余额和密钥限额。');
   if (!res.ok) throw new Error(data?.error?.message || `备用 API 返回 ${res.status}`);
   const text = data?.choices?.[0]?.message?.content;
-  if (!text || !String(text).trim()) throw new Error('备用 API 没有返回内容');
+  if (!text || !String(text).trim()) {
+    if (data?.choices?.[0]?.finish_reason === 'length') throw new Error('模型达到输出上限，但没有返回正文；思考模型可能把额度用于思考。可适当调高最大输出长度后重试。');
+    throw new Error('备用 API 没有返回内容');
+  }
   return String(text).trim();
 }
 function backupContext(extra) {
@@ -276,7 +284,7 @@ const publicState = async () => {
   const b = backup();
   return {
     lifePrefs: lifeSystem.prefs(), voice: voiceSystem.publicConfig(), profile: profile(), memory: kv.get('memory', ''), busy, folding,
-    backup: { baseUrl: b.baseUrl, model: b.model, chat: b.chat, memory: b.memory, hasKey: !!b.key },
+    backup: { baseUrl: b.baseUrl, model: b.model, maxTokens: b.maxTokens, chat: b.chat, memory: b.memory, hasKey: !!b.key },
     counts: { messages: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0').get().n, diary: db.prepare('SELECT COUNT(*) n FROM diary').get().n, pending: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0 AND id > ?').get(kv.get('memUpTo', 0)).n },
     since: db.prepare('SELECT MIN(ts) t FROM messages').get().t || Date.now(),
     claude: await claude.status(),
@@ -380,6 +388,10 @@ async function route(req, res) {
     for (const k of ['baseUrl', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, 300);
     if (typeof body.key === 'string' && body.key.trim()) next.key = body.key.trim().slice(0, 300);
     if (body.clearKey) next.key = '';
+    if (body.maxTokens !== undefined) {
+      if (!Number.isInteger(body.maxTokens) || body.maxTokens < 256 || body.maxTokens > 4000) throw fail(400, '最大输出长度需要是 256 到 4000 之间的整数');
+      next.maxTokens = body.maxTokens;
+    }
     for (const k of ['chat', 'memory']) if (typeof body[k] === 'boolean') next[k] = body[k];
     kv.set('backup', next);
     return json(res, 200, { ok: true });
