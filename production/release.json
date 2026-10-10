@@ -1,5 +1,5 @@
 {
-  "snapshot": "20261010T032641Z",
+  "snapshot": "20261010T035733Z",
   "sha256": {
     "server.js": "1502df08cbc2de412f826bd54a3e9de2a91e4a82a6c348e0b4ca522998d4c713",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
@@ -19,10 +19,10 @@
     "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
     "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
     "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
-    "public/index.html": "5a08de48345718866a154495367effe9cd187c51913200898d818cbf42289f57",
+    "public/index.html": "7ac4407b7e62f05a8626338534a9153b5e0a7d4aa5117f5c2498fee5fc6d9e56",
     "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
     "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
-    "public/manifest.webmanifest": "e850a3232d5fcf3b3ec1aa1abe3ac1ffdca4a15197a0f1ddb01fd32a218db0f6",
+    "public/manifest.webmanifest": "ad390927a17951cbcc809892ceab23b8978607bf5315cd32e17ba0184a350290",
     "public/reading.css": "39b70637e345655888763e39073878ed302d1c7908747e0c8f3faf488a8a151b",
     "public/reading.js": "ce1474fa2348dbf04cdaefdc5ecf0c3fe02159137d17581c46f45bc2bce1ab53",
     "public/stickers.css": "37529581eab1182ca406b68bba72cc6a63a1ab7c78393b77399dbd148ad79c2f",
@@ -36,7 +36,11 @@
     "candyjar/NOTICE.md": "761b336619e284cafd208a8c8fbdaee37dbd82614b74bbade38538d9192b6d6f",
     "public/candy.js": "b04509fab256f9218914e6ae881940b5568afa56bca3633d268ddac83ba529e4",
     "public/candy.css": "d80eff2632941fd98336466ab06c3d03118b344a4e4718caccb7e0cf88d44a6d",
-    "backup-models.js": "7c6b39047d4417812c6a0904e39df939be19cb2c7e7449fb62accfd64c9ec05a"
+    "backup-models.js": "7c6b39047d4417812c6a0904e39df939be19cb2c7e7449fb62accfd64c9ec05a",
+    "public/mobile.js": "4a70352e6cad002222835ca3fa4d9198dcb6d4ca7892f8c169c6da04af13df20",
+    "public/icon-180.png": "169fb253894ea65fcbf3a08a5e466621edd3ad46057bbc77a4ab5cf3dc4a6427",
+    "public/icon-192.png": "018784d78f2edd69d718086af2054ef792b0b6d3aadd14a89e9ae99a64ce123b",
+    "public/icon-512.png": "ad6eddc95c91b2daa206db380932616a8765a455612ae8dcca9678fc8a090346"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"
