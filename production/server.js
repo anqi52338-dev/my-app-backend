@@ -95,7 +95,8 @@ async function backupComplete(messages) {
   const data = await res.json().catch(() => ({}));
   if (res.status === 402) throw new Error('API 余额或密钥可用预算不足以覆盖本次请求。可先降低最大输出长度；如果仍失败，再检查账户余额和密钥限额。');
   if (!res.ok) throw new Error(data?.error?.message || `备用 API 返回 ${res.status}`);
-  const text = data?.choices?.[0]?.message?.content;
+  const content = data?.choices?.[0]?.message?.content;
+  const text = typeof content === 'string' ? content : Array.isArray(content) ? content.filter(block => ['text','output_text'].includes(block?.type) && typeof block.text === 'string').map(block => block.text).join('') : '';
   if (!text || !String(text).trim()) {
     if (data?.choices?.[0]?.finish_reason === 'length') throw new Error('模型达到输出上限，但没有返回正文；思考模型可能把额度用于思考。可适当调高最大输出长度后重试。');
     throw new Error('备用 API 没有返回内容');
@@ -111,7 +112,7 @@ function backupContext(extra) {
   return messages;
 }
 function backupContent(message) {
-  const text = chatDescription(message).trim() || '看看这张图';
+  const text = (message.role === 'him' && message.type !== 'sticker' ? stickerSystem.decode(message.text).text : chatDescription(message)).trim() || (message.image ? '看看这张图' : '（这条历史回复正文不可用）');
   if (message.role !== 'me' || !message.image || message.type === 'sticker') return text;
   const name = message.image;
   if (path.basename(name) !== name) throw new Error('图片文件名无效，请重新上传');
@@ -124,6 +125,7 @@ function backupContent(message) {
 }
 async function backupChat(last, candyContext) {
   const messages = backupContext();
+  for (const message of messages) { if(message.role==='assistant') { const decoded=stickerSystem.decode(message.content); message.content=JSON.stringify({text:decoded.text,sticker_id:decoded.sticker?.id||null}); } }
   messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
   // Keep image blocks in every selected history turn; never silently retry without them.
   return backupComplete(messages);
@@ -185,6 +187,7 @@ async function generateReply() {
       }
     }
     const reply = stickerSystem.decode(text);
+    if (reply.malformed) throw new Error('他返回的回复格式不完整，本次没有把代码写入聊天；请再试一次');
     const candyNote = await candySystem.applyAction(reply.candyAction || text, String(last.turn_id || last.id));
     if (candyNote) reply.text = [reply.text, candyNote].filter(Boolean).join('\n\n');
     if (!reply.text && !reply.sticker) throw new Error('他这次没有给出有效回复，请再试一次');
@@ -350,7 +353,13 @@ async function route(req, res) {
     const before = Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
     const limit = Math.min(200, Number(url.searchParams.get('limit')) || 60);
     const rows = db.prepare('SELECT * FROM messages WHERE archived=0 AND id < ? ORDER BY id DESC LIMIT ?').all(before, limit + 1);
-    return json(res, 200, { messages: rows.slice(0, limit).reverse(), hasMore: rows.length > limit, busy });
+    const messages = rows.slice(0, limit).reverse().map(message => {
+      if(message.role!=='him'||message.type==='sticker') return message;
+      const decoded=stickerSystem.decode(message.text);
+      const alreadySent=decoded.sticker && message.turn_id && db.prepare("SELECT 1 FROM messages WHERE archived=0 AND turn_id=? AND type='sticker' AND image=?").get(message.turn_id,decoded.sticker.image);
+      return {...message,text:decoded.text,recovered_sticker:decoded.sticker&&!alreadySent?{image:decoded.sticker.image,name:decoded.sticker.name}:null};
+    });
+    return json(res, 200, { messages, hasMore: rows.length > limit, busy });
   }
   if (key === 'POST /api/chat') {
     if (busy) throw fail(409, '他还在回上一句');

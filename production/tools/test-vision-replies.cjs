@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=process.argv[2]||path.resolve(__dirname,'..');
 const memory=new DatabaseSync(':memory:');memory.exec("CREATE TABLE stickers(id INTEGER PRIMARY KEY,name TEXT,image TEXT,ts INTEGER);CREATE TABLE messages(id INTEGER PRIMARY KEY,text TEXT,image TEXT)");
 const stickers=require(path.join(root,'stickers'))({db:memory});
-for(const [raw,expected] of [['{"text":"你好","sticker_id":null,"candy_action":{"action":"eat","index":0}}','你好'],['你好\n```json\n{"text":"再说一句","sticker_id":null}\n```','你好\n再说一句'],['你好\n{"candy_action":{"action":"feed","index":1}}','你好'],['{"text":"带有 {括号} 和 \\"引号\\"","sticker_id":null}','带有 {括号} 和 "引号"'],['普通回复','普通回复']])assert.equal(stickers.decode(raw).text,expected);
+for(const [raw,expected] of [['{"text":"你好","sticker_id":null,"candy_action":{"action":"eat","index":0}}','你好'],['你好\n```json\n{"text":"再说一句","sticker_id":null}\n```','再说一句'],['你好\n{"candy_action":{"action":"feed","index":1}}','你好'],['{"text":"带有 {括号} 和 \\"引号\\"","sticker_id":null}','带有 {括号} 和 "引号"'],['普通回复','普通回复']])assert.equal(stickers.decode(raw).text,expected);
 assert.equal(stickers.decode('你好\n{"candy_action":{"action":"feed","index":1}}').candyAction.action,'feed');for(const reply of ['这是完整的一段回复，宝宝。','第一句说完。\n\n再说第二句，安安。']) {
  assert.equal(stickers.decode(reply+'\n\n'+reply).text,reply);
  assert.equal(stickers.decode(reply+reply).text,reply);
@@ -12,7 +12,7 @@ assert.equal(stickers.decode('好好好').text,'好好好');
 assert.equal(stickers.decode('先说这一句。\n\n再说不同的一句。').text,'先说这一句。\n\n再说不同的一句。');
 memory.close();
 const data=fs.mkdtempSync(path.join(os.tmpdir(),'vision-regression-'));const preload=path.join(data,'preload.cjs');fs.writeFileSync(preload,`const id=require.resolve(${JSON.stringify(path.join(root,'claude.js'))});require.cache[id]={exports:{configure(){},status:async()=>({running:false}),restartNext(){}}};`);
-let payloads=[],mode='ok';const provider=http.createServer(async(req,res)=>{let text='';for await(const chunk of req)text+=chunk;payloads.push(JSON.parse(text));res.setHeader('content-type','application/json');if(mode==='error'){res.statusCode=400;res.end(JSON.stringify({error:{message:'fixture image rejected'}}));}else res.end(JSON.stringify({choices:[{message:{content:'正常回复\n```json\n{"text":"糖果回复","sticker_id":null}\n```'}}]}));});
+let payloads=[],mode='ok',replyContent='正常回复\n```json\n{"text":"糖果回复","sticker_id":null}\n```';const provider=http.createServer(async(req,res)=>{let text='';for await(const chunk of req)text+=chunk;payloads.push(JSON.parse(text));res.setHeader('content-type','application/json');if(mode==='error'){res.statusCode=400;res.end(JSON.stringify({error:{message:'fixture image rejected'}}));}else res.end(JSON.stringify({choices:[{message:{content:replyContent}}]}));});
 (async()=>{await new Promise(r=>provider.listen(3138,'127.0.0.1',r));const child=spawn(process.execPath,['--require',preload,path.join(root,'server.js')],{env:{...process.env,HOME_DATA:data,PORT:'3137',PYTHON:process.env.PYTHON||'python3'},stdio:['ignore','ignore','pipe']});let err='';child.stderr.on('data',b=>err+=b);let cookie='';
 async function api(url,method='GET',body){const r=await fetch('http://127.0.0.1:3137'+url,{method,headers:{cookie,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const text=await r.text();return {r,text,json:()=>JSON.parse(text)};}
 try{let ready=false;for(let i=0;i<70;i++){try{await api('/api/auth');ready=true;break;}catch{await new Promise(r=>setTimeout(r,100));}}assert(ready,err);const login=await api('/api/auth/setup','POST',{code:'fixture-only'});cookie=login.r.headers.get('set-cookie').split(';')[0];await api('/api/backup','PUT',{baseUrl:'http://127.0.0.1:3138',key:'fixture-only',model:'fixture',chat:true,memory:false});
@@ -20,6 +20,22 @@ const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
 let response=await api('/api/chat','POST',{text:'第一张图片',image});assert(response.text.includes('糖果回复'));assert(!response.text.includes('```'));const blocks=p=>p.messages.filter(m=>Array.isArray(m.content)).flatMap(m=>m.content).filter(c=>c.type==='image_url');assert.equal(blocks(payloads[0])[0].image_url.url,image);
 await api('/api/chat','POST',{text:'刚才图片里是什么'});assert.equal(blocks(payloads[1])[0].image_url.url,image,'text follow-up must keep original image');
 await api('/api/chat','POST',{text:'第二张图片',image});assert.equal(blocks(payloads[2]).length,2,'both images retained');
+const fixtureDb=new DatabaseSync(path.join(data,'home.db'));
+fixtureDb.prepare("INSERT INTO stickers(id,name,image,ts,owner,status,description,emotion_tags) VALUES(?,?,?,?,?,?,?,?)").run(314,'小白猫·求抱抱','st-fixture.gif',Date.now(),'assistant','active','小猫求抱抱','["撒娇"]');
+fs.writeFileSync(path.join(data,'workspace/uploads/st-fixture.gif'),Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7','base64'));
+replyContent='宝宝，我看清楚这张图片啦。\n[表情：小白猫·求抱抱] 画面：小猫求抱抱；情绪：撒娇';
+response=await api('/api/chat','POST',{text:'看图后请发一个表情',image});
+let events=response.text.trim().split('\n').map(line=>JSON.parse(line));let generated=events.find(event=>event.type==='done').messages;
+assert.equal(generated.filter(m=>m.type==='sticker').length,1);assert.equal(generated.find(m=>m.type==='sticker').sticker_id,314);assert.equal(generated.find(m=>m.type==='text').text,'宝宝，我看清楚这张图片啦。');
+replyContent='宝宝，我看清楚这张图片啦。\n```json\n'+JSON.stringify({text:'宝宝，我看清楚这张图片啦。',sticker_id:'314'})+'\n```';
+response=await api('/api/chat','POST',{text:'再给我一张表情'});events=response.text.trim().split('\n').map(line=>JSON.parse(line));generated=events.find(event=>event.type==='done').messages;assert.equal(generated[0].text,'宝宝，我看清楚这张图片啦。');assert.equal(generated[1].sticker_id,314);
+assert(payloads.at(-1).messages.filter(m=>m.role==='assistant').some(m=>JSON.parse(m.content).sticker_id===314),'sticker history must be a structured assistant reply');
+const historical='宝宝，先抱抱你。\n[表情：小白猫·求抱抱] 画面：小猫求抱抱；情绪：撒娇';
+const historicalId=fixtureDb.prepare("INSERT INTO messages(role,text,ts,type,turn_id) VALUES('him',?,?,'text','fixture-old')").run(historical,Date.now()).lastInsertRowid;
+let listed=(await api('/api/messages')).json().messages.find(m=>m.id===Number(historicalId));assert.equal(listed.text,'宝宝，先抱抱你。');assert.equal(listed.recovered_sticker.image,'st-fixture.gif');assert.equal(fixtureDb.prepare('SELECT text FROM messages WHERE id=?').get(historicalId).text,historical,'projection must preserve original history');
+replyContent='宝宝，先抱抱你。\n```json\n{"text":"未完成';response=await api('/api/chat','POST',{text:'坏格式测试'});assert(response.text.includes('回复格式不完整'));assert(!response.text.includes('```'));assert(!response.text.includes('未完成'));
+replyContent=[{type:'text',text:JSON.stringify({text:'文字块也能正确处理。',sticker_id:314})}];response=await api('/api/chat','POST',{retry:true});assert(response.text.includes('文字块也能正确处理。'));assert(response.text.includes('"sticker_id":314'));
+fixtureDb.close();
 mode='error';const before=payloads.length;response=await api('/api/chat','POST',{text:'再看看'});assert(response.text.includes('fixture image rejected'));assert.equal(payloads.length,before+1,'no text-only retry after provider rejects image');
 const files=fs.readdirSync(path.join(data,'workspace/uploads'));fs.unlinkSync(path.join(data,'workspace/uploads',files[0]));const count=payloads.length;response=await api('/api/chat','POST',{text:'图片还在吗'});assert(response.text.includes('图片文件已丢失'));assert.equal(payloads.length,count,'missing file never sent as placeholder');
 console.log('PASS: real outbound payload retains exact original images across follow-ups and multiple uploads; provider/file failures do not downgrade to text; mixed/fenced candy JSON decoded without leaking protocol.');
