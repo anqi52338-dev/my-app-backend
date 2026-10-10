@@ -1,7 +1,7 @@
 {
-  "snapshot": "20261009T150608Z",
+  "snapshot": "20261010T031404Z",
   "sha256": {
-    "server.js": "77caca361658ccb02221c099d47034b2354eaca93fa10115d5b1b5f488dc7180",
+    "server.js": "23920feda036d665d122e12eb4149a947e90e7fa00830bda572b792853a8af33",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
@@ -12,14 +12,14 @@
     "parse_epub.py": "a2e89f4171cfece967d00492e3dc3423670b6e4f7ef79a342b93a9a5cd3d536b",
     "sticker-thumbnail.py": "60e3fbe2e02fead71cd8d6e73764b76a0770f3b05036440fcd7416cbc392cf38",
     "hooks/hook.cjs": "ffd42e2283c5de9e83334070fec61002b45d23f7f397c1f2c47d497446b5c2fe",
-    "public/app.js": "dff54c416c1e27253d4c4e910b5f3a6206929a4f7ce21329bbc230dcc4a9e532",
+    "public/app.js": "39c84263a8f2011cb87d4a16f626b95bce132f98bbcc64fff51447318e5c7271",
     "public/bunny.js": "ec5286246c86b04ef411c7331d09056856d20b7580ce111dc854cac098998427",
     "public/fonts/cormorant-500.woff2": "8197bf53615ddc8c423f444c7f0eec63b7fa0ba093fcfbec60dfdd28429b0fc8",
     "public/fonts/cormorant-500i.woff2": "4fb55a7a6d564d428061fe12c82c896264bcc8b7f0b52840bf88e0db5b91256f",
     "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
     "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
     "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
-    "public/index.html": "c946999ec5f91816d525001ea773922d6c16907b33bf1ef37820b13e767a42d6",
+    "public/index.html": "a832eb43b40f676595d3e88f37a53e8c06214d560612f789bf03f5df61daec7d",
     "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
     "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
     "public/manifest.webmanifest": "e850a3232d5fcf3b3ec1aa1abe3ac1ffdca4a15197a0f1ddb01fd32a218db0f6",
@@ -35,7 +35,8 @@
     "candyjar/LICENSE-CONTENT.md": "7add22b31b42ff0759ca0feeb4ad06fb9ffc1e8dcea9bd4e80ea5a137de253cd",
     "candyjar/NOTICE.md": "761b336619e284cafd208a8c8fbdaee37dbd82614b74bbade38538d9192b6d6f",
     "public/candy.js": "b04509fab256f9218914e6ae881940b5568afa56bca3633d268ddac83ba529e4",
-    "public/candy.css": "d80eff2632941fd98336466ab06c3d03118b344a4e4718caccb7e0cf88d44a6d"
+    "public/candy.css": "d80eff2632941fd98336466ab06c3d03118b344a4e4718caccb7e0cf88d44a6d",
+    "backup-models.js": "7c6b39047d4417812c6a0904e39df939be19cb2c7e7449fb62accfd64c9ec05a"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"

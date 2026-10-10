@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const claude = require('./claude');
 const emotion = require('./emotion');
+const backupModels = require('./backup-models');
 
 const PORT = Number(process.env.PORT || 3100);
 const DATA = process.env.HOME_DATA || path.join(__dirname, 'data');
@@ -382,6 +383,20 @@ async function route(req, res) {
     for (const k of ['chat', 'memory']) if (typeof body[k] === 'boolean') next[k] = body[k];
     kv.set('backup', next);
     return json(res, 200, { ok: true });
+  }
+  if (key === 'POST /api/backup/models') {
+    const body = await readBody(req); const saved = backup();
+    let baseUrl;
+    try { baseUrl = backupModels.normalizeBase(body.baseUrl || saved.baseUrl); }
+    catch (e) { throw fail(400, e.message); }
+    let sameBase = false;
+    try { sameBase = baseUrl === backupModels.normalizeBase(saved.baseUrl); } catch {}
+    const suppliedKey = typeof body.key === 'string' ? body.key.trim() : '';
+    const apiKey = suppliedKey || (sameBase ? saved.key : '');
+    if (!apiKey) throw fail(400, '先填写这个 API 地址对应的 Key；已保存的 Key 只能用于原地址');
+    if (apiKey.length > 300 || /[\x00-\x1f\x7f]/.test(apiKey)) throw fail(400, 'Key 格式不正确');
+    try { return json(res, 200, { models: await backupModels.fetchModels(baseUrl, apiKey) }); }
+    catch (e) { throw fail(502, e.message); }
   }
   if (key === 'POST /api/backup/test') {
     if (!backupReady()) throw fail(400, '先把地址、Key 和模型填完整并保存');
