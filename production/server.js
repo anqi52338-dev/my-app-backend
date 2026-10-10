@@ -145,6 +145,14 @@ const lifeSystem = require('./life')({ db, kv, readBody, json: (...args) => json
   }
 });
 
+const monopolySystem = require('./monopoly')({kv,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),profile,
+  respond:async task=>{
+    const system=profile().persona+emotion.prompt(profile())+'\n你正在与安安玩情侣棋盘游戏。用温柔自然的口吻回答这一轮小任务，通常一到四句。只输出对她说的话，不输出JSON或游戏操作；建议和约会计划要表述为想法，不声称已经在现实完成。\n你记得的事：'+kv.get('memory','');
+    if(backupReady())return stickerSystem.decode(await backupComplete([{role:'system',content:system},{role:'user',content:task}])).text;
+    return runIsolated(system,[{role:'user',content:task}],profile().model);
+  }
+});
+
 const candySystem = require('./candy')({ data: DATA, kv, readBody, json: (...args) => json(...args), fail: (...args) => fail(...args), isBusy: () => busy });
 
 const readingRoute = require('./reading')({ db, readBody, json: (...args) => json(...args), fail: (...args) => fail(...args), compose });
@@ -328,6 +336,7 @@ async function route(req, res) {
     return issue(res);
   }
   if (!authed(req)) throw fail(401, '请先输入口令');
+  if (await monopolySystem.route(req, res, url)) return;
   if (await candySystem.route(req, res, url)) return;
   if (await lifeSystem.route(req, res, url)) return;
   if (await voiceSystem.route(req, res, url)) return;
@@ -476,7 +485,7 @@ async function route(req, res) {
 
 
   if (key === 'GET /api/export') {
-    const data = { candy: await candySystem.export(), life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
+    const data = { monopoly:monopolySystem.export(), candy: await candySystem.export(), life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="our-home-${new Date().toISOString().slice(0, 10)}.json"` });
     return res.end(JSON.stringify(data, null, 2));
   }
