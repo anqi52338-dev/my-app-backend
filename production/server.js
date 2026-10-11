@@ -403,7 +403,24 @@ async function route(req, res) {
       if (body.persona.length > 8000) throw fail(400, '人设最多保存 8000 字，请缩短后重试');
       next.persona = body.persona;
     }
-    for (const k of ['hisName', 'bg', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, 40);
+    if (Object.hasOwn(body, 'bg')) {
+      if (!['damask','ivory','rose','sky','cream','letter','moon','sage','custom'].includes(body.bg)) throw fail(400, '请选择已有的聊天背景');
+      next.bg=body.bg;
+    }
+    if (Object.hasOwn(body,'bgImage')) {
+      if (body.bgImage==='') next.bgImage='';
+      else {
+        if (typeof body.bgImage!=='string') throw fail(400,'请上传图片文件');
+        const match=/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(body.bgImage);
+        if (!match || match[2].length>5600000) throw fail(400,'背景需要是小于 4MB 的 JPG、PNG 或 WebP 图片');
+        const bytes=Buffer.from(match[2],'base64');
+        const valid=match[1]==='jpeg'?bytes.subarray(0,3).equals(Buffer.from([255,216,255])):match[1]==='png'?bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])):bytes.subarray(0,4).toString()==='RIFF'&&bytes.subarray(8,12).toString()==='WEBP';
+        if (!valid || bytes.length>4*1024*1024) throw fail(400,'图片格式不正确，请换一张图片');
+        next.bgImage=saveDataUrl(body.bgImage,'bg');
+      }
+    }
+    if (next.bg==='custom'&&!next.bgImage) throw fail(400,'请先上传自己的聊天背景');
+    for (const k of ['hisName', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, 40);
     if (typeof body.emotionEnabled === 'boolean') next.emotionEnabled = body.emotionEnabled;
     if (typeof body.emotionRules === 'string') next.emotionRules = body.emotionRules.trim().slice(0, 4000) || emotion.DEFAULT_RULES;
     for (const k of ['myAv', 'hisAv']) if (typeof body[k] === 'string') next[k] = body[k] === '' ? '' : (saveDataUrl(body[k], 'av') || old[k]);

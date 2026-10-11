@@ -1,7 +1,7 @@
 {
-  "snapshot": "20261011T023332Z",
+  "snapshot": "20261011T041449Z",
   "sha256": {
-    "server.js": "0c2503778d7cbe3060135f9c6a0c417d554f6b7f0f9c4ab56bb4c6fa9345cda3",
+    "server.js": "354b4539bd3317d1e5601433e89fa267d1df58e518d3c152b7b2e99a84187381",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
@@ -12,14 +12,14 @@
     "parse_epub.py": "a2e89f4171cfece967d00492e3dc3423670b6e4f7ef79a342b93a9a5cd3d536b",
     "sticker-thumbnail.py": "60e3fbe2e02fead71cd8d6e73764b76a0770f3b05036440fcd7416cbc392cf38",
     "hooks/hook.cjs": "ffd42e2283c5de9e83334070fec61002b45d23f7f397c1f2c47d497446b5c2fe",
-    "public/app.js": "9e970580c692f5c868c2455e01f18012add4841245006019d9f0bd3adacb802e",
+    "public/app.js": "44098a7181d9f73498df3e9e6e6d5fc844824e2082d1688ef32c244fbb95c130",
     "public/bunny.js": "ec5286246c86b04ef411c7331d09056856d20b7580ce111dc854cac098998427",
     "public/fonts/cormorant-500.woff2": "8197bf53615ddc8c423f444c7f0eec63b7fa0ba093fcfbec60dfdd28429b0fc8",
     "public/fonts/cormorant-500i.woff2": "4fb55a7a6d564d428061fe12c82c896264bcc8b7f0b52840bf88e0db5b91256f",
     "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
     "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
     "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
-    "public/index.html": "38f548b189626fd504bd5c8b2eeb5300e81ce280fb00f6837e57acbcd0463eef",
+    "public/index.html": "7a7b8fd689da96f65560f98f4a6e9e0557b6403e69eee3377fe68cc776bcbe8a",
     "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
     "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
     "public/manifest.webmanifest": "ad390927a17951cbcc809892ceab23b8978607bf5315cd32e17ba0184a350290",
@@ -43,7 +43,11 @@
     "public/icon-512.png": "ad6eddc95c91b2daa206db380932616a8765a455612ae8dcca9678fc8a090346",
     "monopoly.js": "227b7a28d00776b614d9514d25433a7b610fd12160ad43fa25861b6cb1fc46cf",
     "public/monopoly.js": "f05d54eca079b4173d5d11450fe671e57aab0690250c8ae63ecf6cf6b187446d",
-    "public/monopoly.css": "02f0b8038695efa93229dd10d80cc86be932344c6eb70898c2e12b57efa311fd"
+    "public/monopoly.css": "02f0b8038695efa93229dd10d80cc86be932344c6eb70898c2e12b57efa311fd",
+    "public/backgrounds/cream.jpg": "bd71431036049363974a72d2e2c19ef6f72b232fad33c37e87339c93602c73bb",
+    "public/backgrounds/letter.jpg": "b8bc2a819cad2c1d2604b6f784822d928067b4ebb0fa0332f3514972bd1c5614",
+    "public/backgrounds/moon.jpg": "3bbc5d4780f3e1cad036781f99ef32f6af7cfe5448b6423a05f612d3791be5ae",
+    "public/backgrounds/sage.jpg": "cdea24d86689df55634bbe8b64d411fda561124d79844c468a3e05b10cc3af38"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"
