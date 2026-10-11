@@ -398,12 +398,16 @@ async function route(req, res) {
 
   if (key === 'PUT /api/profile') {
     const body = await readBody(req); const old = profile(); const next = { ...old };
-    for (const k of ['hisName', 'persona', 'bg', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, k === 'persona' ? 8000 : 40);
+    if (Object.hasOwn(body, 'persona')) {
+      if (typeof body.persona !== 'string') throw fail(400, '人设请填写文字');
+      if (body.persona.length > 8000) throw fail(400, '人设最多保存 8000 字，请缩短后重试');
+      next.persona = body.persona;
+    }
+    for (const k of ['hisName', 'bg', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, 40);
     if (typeof body.emotionEnabled === 'boolean') next.emotionEnabled = body.emotionEnabled;
     if (typeof body.emotionRules === 'string') next.emotionRules = body.emotionRules.trim().slice(0, 4000) || emotion.DEFAULT_RULES;
     for (const k of ['myAv', 'hisAv']) if (typeof body[k] === 'string') next[k] = body[k] === '' ? '' : (saveDataUrl(body[k], 'av') || old[k]);
     if (!next.hisName) next.hisName = '哥哥';
-    if (!next.persona) next.persona = DEFAULT_PERSONA;
     kv.set('profile', next);
     if (next.emotionEnabled !== old.emotionEnabled || next.emotionRules !== old.emotionRules || next.persona !== old.persona || next.model !== old.model || next.hisName !== old.hisName) claude.restartNext();
     return json(res, 200, { profile: next });
