@@ -17,8 +17,11 @@ let payloads=[],mode='ok',replyContent='正常回复\n```json\n{"text":"糖果�
 async function api(url,method='GET',body){const r=await fetch('http://127.0.0.1:3137'+url,{method,headers:{cookie,'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const text=await r.text();return {r,text,json:()=>JSON.parse(text)};}
 try{let ready=false;for(let i=0;i<70;i++){try{await api('/api/auth');ready=true;break;}catch{await new Promise(r=>setTimeout(r,100));}}assert(ready,err);const login=await api('/api/auth/setup','POST',{code:'fixture-only'});cookie=login.r.headers.get('set-cookie').split(';')[0];await api('/api/backup','PUT',{baseUrl:'http://127.0.0.1:3138',key:'fixture-only',model:'fixture',chat:true,memory:false});
 const image='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j2xkAAAAASUVORK5CYII=';
+await api('/api/profile','PUT',{persona:'A freely edited fixture persona with no formatting instructions.'});
 let response=await api('/api/chat','POST',{text:'第一张图片',image});assert(response.text.includes('糖果回复'));assert(!response.text.includes('```'));const blocks=p=>p.messages.filter(m=>Array.isArray(m.content)).flatMap(m=>m.content).filter(c=>c.type==='image_url');assert.equal(blocks(payloads[0])[0].image_url.url,image);
 await api('/api/chat','POST',{text:'刚才图片里是什么'});assert.equal(blocks(payloads[1])[0].image_url.url,image,'text follow-up must keep original image');
+assert(payloads[1].messages[0].content.includes('聊天显示格式独立于角色设定'),'custom persona must retain main chat layout rules');
+assert(payloads[1].messages[0].content.includes('在 JSON 字符串里写成 \\n\\n'),'JSON reply keeps explicit bubble separators');
 await api('/api/chat','POST',{text:'第二张图片',image});assert.equal(blocks(payloads[2]).length,2,'both images retained');
 const fixtureDb=new DatabaseSync(path.join(data,'home.db'));
 fixtureDb.prepare("INSERT INTO stickers(id,name,image,ts,owner,status,description,emotion_tags) VALUES(?,?,?,?,?,?,?,?)").run(314,'小白猫·求抱抱','st-fixture.gif',Date.now(),'assistant','active','小猫求抱抱','["撒娇"]');
