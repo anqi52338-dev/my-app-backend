@@ -1,0 +1,22 @@
+const assert=require('node:assert/strict'),create=require('../presence');
+let ts=Date.parse('2026-10-25T16:30:00Z'),latest=ts-3*3600000,locked=false,sends=0,requests=0,failSend=false,failWeather=false;
+const data=new Map(),kv={get:(k,f)=>data.has(k)?data.get(k):f,set:(k,v)=>data.set(k,structuredClone(v))};
+const make=()=>create({kv,db:{prepare:()=>({get:()=>({t:latest})})},readBody:async req=>req.body,json:(res,status,body)=>{res.status=status;res.body=body;},fail:(status,message)=>Object.assign(new Error(message),{status}),send:async()=>{sends++;if(failSend)throw Error('fixture');return true;},isBusy:()=>locked,isBlocked:()=>false,acquire:()=>{if(locked)return false;locked=true;return true;},release:()=>locked=false,now:()=>ts,fetcher:async u=>{requests++;if(failWeather)throw Error('offline');return{ok:true,json:async()=>({timezone:'Asia/Shanghai',current:{time:'2026-10-26T00:30',temperature_2m:15,weather_code:2,apparent_temperature:14},daily:{temperature_2m_max:[20],temperature_2m_min:[12],precipitation_probability_max:[30]}})};}});
+(async()=>{let p=make();assert.equal(p.prefs().location.name,'乐陵 · 山东');assert.equal(await p.tick(),false);assert.equal(sends,0);
+const text=await p.context();assert(/2026.*10.*26/.test(text));assert(text.includes('00:30'));assert(text.includes('15℃'));await p.context();assert.equal(requests,1,'cache avoids weather request each chat');
+data.set('presencePrefs',{enabled:true,allDay:true,timezone:'Asia/Shanghai',enabledAt:ts-3*3600000});
+for(let i=0;i<10;i++){assert.equal(await p.tick(),true);assert.equal(await p.tick(),false);ts+=2*3600000;}
+assert.equal(sends,10);assert.equal(await p.tick(),false);p=make();assert.equal(await p.tick(),false,'restart does not reset daily cap');
+ts=Date.parse('2026-10-26T16:30:00Z');assert.equal(await p.tick(),true,'new local date resets counter');assert.equal(p.publicState().attemptsToday,1);
+ts+=2*3600000;failSend=true;assert.equal(await p.tick(),false);assert.equal(p.publicState().attemptsToday,2);assert.equal(p.publicState().sentToday,1);assert(p.publicState().lastError);assert.equal(await p.tick(),false,'no rapid failure retries');failSend=false;
+locked=true;ts+=2*3600000;assert.equal(await p.tick(),false);locked=false;
+latest=ts;assert.equal(await p.tick(),false,'recent user suppresses proactive');latest=ts-3*3600000;
+data.set('presencePrefs',{...p.prefs(),enabled:false});assert.equal(await p.tick(),false);
+data.set('presencePrefs',{...p.prefs(),weatherEnabled:true});failWeather=true;ts+=2*3600000;assert((await p.context()).includes('不要猜测'));
+const bad={};await assert.rejects(p.route({method:'PUT',body:{dailyLimit:11}},bad,new URL('http://x/api/presence')),e=>e.status===400);
+await assert.rejects(p.route({method:'PUT',body:{timezone:'not-a-zone'}},bad,new URL('http://x/api/presence')),e=>e.status===400);
+await assert.rejects(p.route({method:'PUT',body:{location:{name:'bad',latitude:91,longitude:1}}},bad,new URL('http://x/api/presence')),e=>e.status===400);
+await p.route({method:'PUT',body:{location:{name:'定位',latitude:37.73472,longitude:117.22028}}},bad,new URL('http://x/api/presence'));assert.equal(p.prefs().location.latitude,37.73);
+data.set('presencePrefs',{...p.prefs(),enabled:true,enabledAt:0,allDay:false,start:22,end:7});ts=Date.parse('2026-10-27T04:00:00Z');latest=ts-3*3600000;assert.equal(await p.tick(),false,'quiet daytime window');
+console.log('PASS: live local year/date/time, weather cache/failure, approximate location, validation, all-day cap 10, local midnight reset, persistent reservation, no duplicates, failures count, idle/busy/disabled/window gates.');
+})().catch(e=>{console.error(e);process.exitCode=1;});

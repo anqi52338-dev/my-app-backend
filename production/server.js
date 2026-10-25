@@ -39,12 +39,9 @@ const kv = {
 };
 if (!kv.get('secret')) kv.set('secret', crypto.randomBytes(24).toString('hex'));
 const profile = () => ({ emotionEnabled: true, emotionRules: emotion.DEFAULT_RULES, hisName: '哥哥', persona: DEFAULT_PERSONA, bg: 'damask', model: 'default', myAv: '', hisAv: '', ...kv.get('profile', {}) });
-const backup = () => {
-  const saved = kv.get('backup', {});
-  const maxTokens = Number.isInteger(saved.maxTokens) && saved.maxTokens >= 256 && saved.maxTokens <= 4000 ? saved.maxTokens : 2048;
-  return { baseUrl: '', key: '', model: '', chat: false, memory: true, ...saved, maxTokens };
-};
-const backupReady = () => { const b = backup(); return !!(b.baseUrl && b.key && b.model); };
+const chatRoutes=require('./chat-routes')({kv,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),isBusy:()=>busy||folding,complete:(messages,b)=>backupComplete(messages,b),models:backupModels});
+const backup=()=>({...chatRoutes.selected(),chat:chatRoutes.active()!=='subscription'});
+const backupReady=()=>chatRoutes.ready(chatRoutes.selected());
 const addMessage = (role, text, image, src, type = 'text', turnId = crypto.randomUUID(), stickerId = null, quote = null) => {
   const ts = Date.now();
   const { lastInsertRowid } = db.prepare('INSERT INTO messages (role, text, image, src, ts, type, turn_id, sticker_id, reply_to, quote_text, quote_role) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(role, text, image || null, src || null, ts, type, turnId, stickerId, quote?.id || null, quote ? (quote.text || '[图片或表情]').slice(0, 500) : '', quote?.role || '');
@@ -68,7 +65,7 @@ function systemPrompt() {
 【背景块】有的消息开头会带一段【背景】……【背景结束】，那是系统整理给你的记忆和最近的对话，不是她说的话，不要复述它，自然地接着聊。以【系统任务】开头的消息是请你做一件具体的事（比如写日记），按要求只输出结果本身。`;
 }
 const chatDescription = m => (m.quote_text ? '（她引用了' + (m.quote_role === 'me' ? '自己' : '你') + '之前的话：' + m.quote_text + '）\n' : '') + stickerSystem.describe(m);
-const lineOf = (m) => (m.role === 'me' ? '她：' : '你：') + chatDescription(m).trim().slice(0, 1500);
+const lineOf = (m) => '['+presence.stamp(m.ts)+'] '+(m.role === 'me' ? '她：' : '你：') + chatDescription(m).trim().slice(0, 1500);
 const recentAfterMemory = (limit) => db.prepare('SELECT * FROM messages WHERE archived=0 AND id > ? ORDER BY id DESC LIMIT ?').all(kv.get('memUpTo', 0), limit).reverse();
 function background(excludeId) {
   const recent = recentAfterMemory(KEEP + 8).filter((m) => m.id !== excludeId);
@@ -76,7 +73,8 @@ function background(excludeId) {
 }
 const toolStatus = { WebFetch: '在看你发的链接…', WebSearch: '在查资料…', Read: '在看图片…' };
 
-function askClaude(body, { excludeId, onDelta, onStatus } = {}) {
+async function askClaude(body, { excludeId, onDelta, onStatus } = {}) {
+  body=(await presence.context())+body;
   const p = profile();
   return claude.ask({
     systemPrompt: systemPrompt(), model: p.model, onDelta,
@@ -86,8 +84,11 @@ function askClaude(body, { excludeId, onDelta, onStatus } = {}) {
 }
 
 // ===== 备用 API（OpenAI 兼容）=====
-async function backupComplete(messages) {
-  const b = backup();
+async function backupComplete(messages, b = backup()) {
+  if(!chatRoutes.ready(b))throw new Error('当前线路没有完整配置，请先保存地址、Key 和模型');
+  const context=await presence.context();
+  messages=messages.map(m=>({...m}));
+  if(messages[0]?.role==='system')messages[0].content+=context;else messages.unshift({role:'system',content:context});
   const res = await fetch(b.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
     method: 'POST', signal: AbortSignal.timeout(120000),
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + b.key },
@@ -114,7 +115,8 @@ function backupContext(extra) {
 }
 function backupContent(message) {
   const text = (message.role === 'him' && message.type !== 'sticker' ? stickerSystem.decode(message.text).text : chatDescription(message)).trim() || (message.image ? '看看这张图' : '（这条历史回复正文不可用）');
-  if (message.role !== 'me' || !message.image || message.type === 'sticker') return text;
+  const stamped=message.ts?'['+presence.stamp(message.ts)+'] '+text:text;
+  if (message.role !== 'me' || !message.image || message.type === 'sticker') return stamped;
   const name = message.image;
   if (path.basename(name) !== name) throw new Error('图片文件名无效，请重新上传');
   const file = path.join(UPLOADS, name);
@@ -122,14 +124,15 @@ function backupContent(message) {
   const mime = {'.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webp':'image/webp','.gif':'image/gif'}[path.extname(name).toLowerCase()];
   if (!mime) throw new Error('这张图片格式暂不支持，请改用 JPG、PNG、WebP 或 GIF');
   const bytes = fs.readFileSync(file);
-  return [{type:'text',text}, {type:'image_url',image_url:{url:`data:${mime};base64,${bytes.toString('base64')}`}}];
+  return [{type:'text',text:stamped}, {type:'image_url',image_url:{url:`data:${mime};base64,${bytes.toString('base64')}`}}];
 }
-async function backupChat(last, candyContext) {
+async function backupChat(last, candyContext, extra, b=backup()) {
   const messages = backupContext();
   for (const message of messages) { if(message.role==='assistant') { const decoded=stickerSystem.decode(message.content); message.content=JSON.stringify({text:decoded.text,sticker_id:decoded.sticker?.id||null}); } }
   messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
   // Keep image blocks in every selected history turn; never silently retry without them.
-  return backupComplete(messages);
+  if(extra)messages.push({role:'user',content:extra});
+  return backupComplete(messages,b);
 }
 // 生成一段不进聊天记录的文字（日记、朋友圈、评论）
 async function compose(task, image) {
@@ -172,9 +175,10 @@ async function generateReply() {
   try {
     let text; let src = 'claude';
     const candyContext = await candySystem.context().catch(() => '\n【糖罐】暂时无法读取状态，按普通人设回复，本轮不要使用糖罐动作。');
-    if (backup().chat && backupReady()) {
+    if (backup().chat) {
+      if(!backupReady())throw new Error('所选备用线路尚未配置完整，请在设置中检查');
       emit({ type: 'status', text: '在想…' });
-      text = await backupChat(last, candyContext); src = 'backup';
+      text = await backupChat(last, candyContext); src = chatRoutes.active()==='backup2'?'backup2':'backup';
     } else {
       const current = last.turn_id ? db.prepare('SELECT * FROM messages WHERE archived=0 AND turn_id = ? ORDER BY id').all(last.turn_id) : [last];
       const body = '【角色状态】你们设定的小状态是“' + lifeSystem.prefs().mood + '”，仅作角色表达，不代表真实感受。\n' + current.map(m => chatDescription(m)).join('\n') + (last.image ? `\n（图片首帧在：${path.join(UPLOADS, stickerSystem.thumbnail(last))}）` : '') + stickerSystem.prompt() + candyContext;
@@ -184,7 +188,7 @@ async function generateReply() {
       } catch (e) {
         if (!backupReady() || partial) throw e;
         emit({ type: 'status', text: '订阅那边没回应，改走备用线路…' });
-        text = await backupChat(last, candyContext); src = 'backup';
+        text = await backupChat(last, candyContext); src = chatRoutes.active()==='backup2'?'backup2':'backup';
       }
     }
     const reply = stickerSystem.decode(text);
@@ -211,6 +215,30 @@ async function generateReply() {
     fold(false).catch(() => {});
   }
 }
+const presence=require('./presence')({kv,db,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),isBusy:()=>busy||folding,isBlocked:()=>lifeSystem.prefs().blocked,
+  acquire:()=>{if(busy||folding)return false;busy=true;return true;},
+  release:()=>{busy=false;for(const res of listeners)res.end();listeners.clear();},
+  send:async task=>{
+    const b=backup(),route=chatRoutes.active();let text;
+    if(route!=='subscription') {
+      if(!backupReady())throw new Error('主动消息线路未配置');
+      text=await backupChat(null,'',task,b);
+    }else text=(await askClaude(task+stickerSystem.prompt())).text;
+    const reply=stickerSystem.decode(text);
+    if(reply.malformed)throw new Error('主动消息格式不完整');
+    if(!presence.prefs().enabled||lifeSystem.prefs().blocked||(!reply.text&&!reply.sticker))return false;
+    const id=crypto.randomUUID(),messages=[];
+    db.exec('BEGIN');
+    try {
+      if(reply.text)messages.push(addMessage('him',reply.text,null,route==='subscription'?'claude':route,'text',id));
+      if(reply.sticker)messages.push(addMessage('him','',reply.sticker.image,route==='subscription'?'claude':route,'sticker',id,reply.sticker.id));
+      db.exec('COMMIT');
+    }catch(e){db.exec('ROLLBACK');throw e;}
+    emit({type:'done',messages,proactive:true});return true;
+  }
+});
+presence.start();
+
 function openStream(res) {
   res.writeHead(200, { 'content-type': 'application/x-ndjson; charset=utf-8', 'cache-control': 'no-cache', 'x-accel-buffering': 'no' });
   listeners.add(res);
@@ -299,10 +327,9 @@ function throttle(req) {
 }
 
 const publicState = async () => {
-  const b = backup();
   return {
     lifePrefs: lifeSystem.prefs(), voice: voiceSystem.publicConfig(), profile: profile(), memory: kv.get('memory', ''), busy, folding,
-    backup: { baseUrl: b.baseUrl, model: b.model, maxTokens: b.maxTokens, chat: b.chat, memory: b.memory, hasKey: !!b.key },
+    backup:chatRoutes.publicConfig('backup'),backup2:chatRoutes.publicConfig('backup2'),chatRoute:chatRoutes.active(),presence:presence.publicState(),
     counts: { messages: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0').get().n, diary: db.prepare('SELECT COUNT(*) n FROM diary').get().n, pending: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0 AND id > ?').get(kv.get('memUpTo', 0)).n },
     since: db.prepare('SELECT MIN(ts) t FROM messages').get().t || Date.now(),
     claude: await claude.status(),
@@ -340,6 +367,8 @@ async function route(req, res) {
     return issue(res);
   }
   if (!authed(req)) throw fail(401, '请先输入口令');
+  if(await chatRoutes.route(req,res,url))return;
+  if(await presence.route(req,res,url))return;
   if (await monopolySystem.route(req, res, url)) return;
   if (await candySystem.route(req, res, url)) return;
   if (await lifeSystem.route(req, res, url)) return;
@@ -430,39 +459,6 @@ async function route(req, res) {
     if (next.emotionEnabled !== old.emotionEnabled || next.emotionRules !== old.emotionRules || next.persona !== old.persona || next.model !== old.model || next.hisName !== old.hisName) claude.restartNext();
     return json(res, 200, { profile: next });
   }
-  if (key === 'PUT /api/backup') {
-    const body = await readBody(req); const next = backup();
-    for (const k of ['baseUrl', 'model']) if (typeof body[k] === 'string') next[k] = body[k].trim().slice(0, 300);
-    if (typeof body.key === 'string' && body.key.trim()) next.key = body.key.trim().slice(0, 300);
-    if (body.clearKey) next.key = '';
-    if (body.maxTokens !== undefined) {
-      if (!Number.isInteger(body.maxTokens) || body.maxTokens < 256 || body.maxTokens > 4000) throw fail(400, '最大输出长度需要是 256 到 4000 之间的整数');
-      next.maxTokens = body.maxTokens;
-    }
-    for (const k of ['chat', 'memory']) if (typeof body[k] === 'boolean') next[k] = body[k];
-    kv.set('backup', next);
-    return json(res, 200, { ok: true });
-  }
-  if (key === 'POST /api/backup/models') {
-    const body = await readBody(req); const saved = backup();
-    let baseUrl;
-    try { baseUrl = backupModels.normalizeBase(body.baseUrl || saved.baseUrl); }
-    catch (e) { throw fail(400, e.message); }
-    let sameBase = false;
-    try { sameBase = baseUrl === backupModels.normalizeBase(saved.baseUrl); } catch {}
-    const suppliedKey = typeof body.key === 'string' ? body.key.trim() : '';
-    const apiKey = suppliedKey || (sameBase ? saved.key : '');
-    if (!apiKey) throw fail(400, '先填写这个 API 地址对应的 Key；已保存的 Key 只能用于原地址');
-    if (apiKey.length > 300 || /[\x00-\x1f\x7f]/.test(apiKey)) throw fail(400, 'Key 格式不正确');
-    try { return json(res, 200, { models: await backupModels.fetchModels(baseUrl, apiKey) }); }
-    catch (e) { throw fail(502, e.message); }
-  }
-  if (key === 'POST /api/backup/test') {
-    if (!backupReady()) throw fail(400, '先把地址、Key 和模型填完整并保存');
-    try { const text = await backupComplete([{ role: 'user', content: '回复“好”这一个字。' }]); return json(res, 200, { ok: true, text: text.slice(0, 40) }); }
-    catch (e) { throw fail(502, e.message); }
-  }
-
   if (key === 'PUT /api/memory') {
     const { text } = await readBody(req);
     kv.set('memory', String(text || '').trim().slice(0, 6000));
