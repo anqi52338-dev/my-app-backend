@@ -65,7 +65,7 @@ function systemPrompt() {
 【背景块】有的消息开头会带一段【背景】……【背景结束】，那是系统整理给你的记忆和最近的对话，不是她说的话，不要复述它，自然地接着聊。以【系统任务】开头的消息是请你做一件具体的事（比如写日记），按要求只输出结果本身。`;
 }
 const chatDescription = m => (m.quote_text ? '（她引用了' + (m.quote_role === 'me' ? '自己' : '你') + '之前的话：' + m.quote_text + '）\n' : '') + stickerSystem.describe(m);
-const lineOf = (m) => '['+presence.stamp(m.ts)+'] '+(m.role === 'me' ? '她：' : '你：') + chatDescription(m).trim().slice(0, 1500);
+const lineOf = (m) => '['+presence.stamp(m.ts)+'] '+(m.role === 'me' ? '她：' : '你：') + (m.role==='him'&&m.type!=='sticker'?stickerSystem.decode(m.text).text:chatDescription(m)).trim().slice(0, 1500);
 const recentAfterMemory = (limit) => db.prepare('SELECT * FROM messages WHERE archived=0 AND id > ? ORDER BY id DESC LIMIT ?').all(kv.get('memUpTo', 0), limit).reverse();
 function background(excludeId) {
   const recent = recentAfterMemory(KEEP + 8).filter((m) => m.id !== excludeId);
@@ -108,14 +108,15 @@ async function backupComplete(messages, b = backup()) {
 function backupContext(extra) {
   const p = profile();
   const history = db.prepare('SELECT * FROM messages WHERE archived=0 ORDER BY id DESC LIMIT 30').all().reverse();
-  const system = `${p.persona}${emotion.prompt(p)}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
+  const times=history.map((m,i)=>`${i+1}. ${m.role==='me'?'她':'你'}：${presence.stamp(m.ts)}`).join('\n');
+  const system = `${p.persona}${emotion.prompt(p)}\n\n【历史消息时间备注｜仅供理解，不属于聊天正文，不得照抄】\n${times}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
   const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m) }))];
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
 }
 function backupContent(message) {
   const text = (message.role === 'him' && message.type !== 'sticker' ? stickerSystem.decode(message.text).text : chatDescription(message)).trim() || (message.image ? '看看这张图' : '（这条历史回复正文不可用）');
-  const stamped=message.ts?'['+presence.stamp(message.ts)+'] '+text:text;
+  const stamped=text; // Message times live in separate system metadata, never inside assistant prose.
   if (message.role !== 'me' || !message.image || message.type === 'sticker') return stamped;
   const name = message.image;
   if (path.basename(name) !== name) throw new Error('图片文件名无效，请重新上传');

@@ -34,7 +34,7 @@ module.exports=function({kv,db,readBody,json,fail,send,isBusy,isBlocked,acquire,
   }
   async function context() {
     const p=prefs(),w=await weather();
-    return `\n【当前时间与当地天气｜应用提供的数据】\n现在是 ${stamp(now())}，时区 ${p.timezone}。历史消息的日期不是今天，不要把旧时间当现在。\n`+(w?`她所在地区：${w.location}。天气数据时间 ${w.time}（${w.timezone}），获取于 ${stamp(w.fetchedAt)}：${w.condition}，气温 ${w.temperature}℃，体感 ${w.feelsLike??'未知'}℃，今日 ${w.low??'未知'}～${w.high??'未知'}℃，今日最高降雨概率 ${w.rainChance??'未知'}%。天气为地区气象数据，不代表她正在室外。\n`:(p.weatherEnabled?'当地天气暂时获取失败，不要猜测温度、晴雨或谎称已查询。\n':'天气功能未开启，不要声称知道她当地天气。\n'))+'自然地根据需要使用时间和天气，不必每句报时或播天气。\n';
+    return `\n【当前时间与当地天气｜应用提供的数据】\n现在是 ${stamp(now())}，时区 ${p.timezone}。历史消息的日期不是今天，不要把旧时间当现在。\n`+(w?`她所在地区：${w.location}。天气数据时间 ${w.time}（${w.timezone}），获取于 ${stamp(w.fetchedAt)}：${w.condition}，气温 ${w.temperature}℃，体感 ${w.feelsLike??'未知'}℃，今日 ${w.low??'未知'}～${w.high??'未知'}℃，今日最高降雨概率 ${w.rainChance??'未知'}%。天气为地区气象数据，不代表她正在室外。\n`:(p.weatherEnabled?'当地天气暂时获取失败，不要猜测温度、晴雨或谎称已查询。\n':'天气功能未开启，不要声称知道她当地天气。\n'))+'时间是后台参考数据，不是正文前缀。禁止在回复开头、每条气泡或结尾附加方括号时间、GMT/UTC、发送时间标签；只有她主动问时间日期或安排日程时才自然提到。天气也按需要使用，不必每句播报。\n';
   }
   const latestUser=()=>Number(db.prepare("SELECT MAX(ts) t FROM messages WHERE role='me' AND archived=0").get().t||0);
   const stats=()=>kv.get('proactiveState',{});

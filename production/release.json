@@ -1,11 +1,11 @@
 {
-  "snapshot": "20261025T111045Z",
+  "snapshot": "20261026T151349Z",
   "sha256": {
-    "server.js": "f2f5a7034b6be24652e5ffa2b73a1d02142ba9044934daa94e7652ded61f3743",
+    "server.js": "009f5c0b42af77b4917b51eadbd3ca2c93fb00a45998aa1e15d5dcd6187a592d",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
-    "stickers.js": "daa1d77db4bbbdcd20298956378e8067b064cc6297b7d0245181e1a3af24d60e",
+    "stickers.js": "7802dd494db96bb334ddc00e854dc4027a8ed98c7e05cb3f0d92a3d3458557d6",
     "voice.js": "d24c6659c3b54644065637ad5862a65d661baab92b2ba23bf5ac59a46ef6e131",
     "life.js": "3112c1bd45e1a1af91cc81a235ca08567f89bce45f03f57c765a13d8d4c6278d",
     "isolated.js": "15cdbbbdcb557dfa68d9a5f0c0c38c1baa62350aabf374fb4b7c998b0308294f",
@@ -50,8 +50,9 @@
     "public/backgrounds/sage.jpg": "cdea24d86689df55634bbe8b64d411fda561124d79844c468a3e05b10cc3af38",
     "public/reply-bubbles.js": "1900035cd74349fd0f18cb405555c5fd89498517997d123bd12f44f3c9910014",
     "chat-routes.js": "cc1fd5d2adaaa6456303859accaf08d42099c074a9b6dfcfee6fff8cefd24d8e",
-    "presence.js": "99598a46d11bbe2bb34e2a5643700247f276e90d1972ea83cd9fc8aab88bbc06",
-    "public/presence.js": "c6aad295432f642797dba903efe302ac90abf900928185efa15e6c783e7c84f8"
+    "presence.js": "957b4fe745f92f35e5cca96f34b94a20f8df4e3164534c8c3638d0d1f74926b0",
+    "public/presence.js": "c6aad295432f642797dba903efe302ac90abf900928185efa15e6c783e7c84f8",
+    "reply-format.js": "41f1ce8793cf0adc8232a178fabffe93e9164c066bbf94233321d30461759260"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"
