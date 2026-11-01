@@ -73,8 +73,12 @@ function background(excludeId) {
 }
 const toolStatus = { WebFetch: '在看你发的链接…', WebSearch: '在查资料…', Read: '在看图片…' };
 
+function appKnowledge() {
+  return require('./app-capabilities')({proactive:presence.prefs(),blocked:lifeSystem.prefs().blocked,voiceReady:voiceSystem.publicConfig().ready,route:chatRoutes.active(),line1Ready:chatRoutes.ready(chatRoutes.config('backup')),line2Ready:chatRoutes.ready(chatRoutes.config('backup2'))});
+}
+
 async function askClaude(body, { excludeId, onDelta, onStatus, environment } = {}) {
-  body=(await presence.context(environment))+body;
+  body=appKnowledge()+(await presence.context(environment))+body;
   const p = profile();
   return claude.ask({
     systemPrompt: systemPrompt(), model: p.model, onDelta,
@@ -86,7 +90,7 @@ async function askClaude(body, { excludeId, onDelta, onStatus, environment } = {
 // ===== 备用 API（OpenAI 兼容）=====
 async function backupComplete(messages, b = backup(), environment) {
   if(!chatRoutes.ready(b))throw new Error('当前线路没有完整配置，请先保存地址、Key 和模型');
-  const context=await presence.context(environment);
+  const context=appKnowledge()+await presence.context(environment);
   messages=messages.map(m=>({...m}));
   if(messages[0]?.role==='system')messages[0].content+=context;else messages.unshift({role:'system',content:context});
   const res = await fetch(b.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
@@ -150,7 +154,7 @@ const runIsolated = require('./isolated');
 const lifeSystem = require('./life')({ db, kv, readBody, json: (...args) => json(...args), fail: (...args) => fail(...args), compose, isBusy: () => busy, restart: () => claude.restartNext(),
   isolated: async (mode, messages) => {
     const p = profile();
-    const system = (mode === 'test' ? '你是一个模型连接测试助手。简短、自然地回应。' : p.persona + emotion.prompt(p)) + '\n这是独立窗口。只使用传入的本窗口消息，不使用主聊天、记忆库、文件或工具。';
+    const system = (mode === 'test' ? '你是一个模型连接测试助手。简短、自然地回应。' : p.persona + emotion.prompt(p)+appKnowledge()) + '\n这是独立窗口。只使用传入的本窗口消息，不使用主聊天、记忆库、文件或工具。';
     if (backup().chat && backupReady()) return backupComplete([{ role: 'system', content: system }, ...messages]);
     return runIsolated(system, messages, p.model);
   }
@@ -160,7 +164,7 @@ const monopolySystem = require('./monopoly')({kv,readBody,json:(...args)=>json(.
   respond:async task=>{
     const system=profile().persona+emotion.prompt(profile())+'\n你正在与安安玩情侣棋盘游戏。用温柔自然的口吻回答这一轮小任务，通常一到四句。只输出对她说的话，不输出JSON或游戏操作；建议和约会计划要表述为想法，不声称已经在现实完成。\n你记得的事：'+kv.get('memory','');
     if(backupReady())return stickerSystem.decode(await backupComplete([{role:'system',content:system},{role:'user',content:task}])).text;
-    return runIsolated(system,[{role:'user',content:task}],profile().model);
+    return runIsolated(system+appKnowledge(),[{role:'user',content:task}],profile().model);
   }
 });
 
@@ -231,7 +235,7 @@ const presence=require('./presence')({kv,db,readBody,json:(...args)=>json(...arg
     }else {
       // Proactive generation cannot browse, search or reread files on its own.
       const messages=chatMessages('',task,environment);
-      messages[0].content+=await presence.context(environment);
+      messages[0].content+=appKnowledge()+await presence.context(environment);
       text=await runIsolated(messages[0].content,messages.slice(1),profile().model,{proactive:true});
     }
     const reply=stickerSystem.decode(text);

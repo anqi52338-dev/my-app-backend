@@ -1,7 +1,7 @@
 {
-  "snapshot": "20261101T113330Z",
+  "snapshot": "20261101T114310Z",
   "sha256": {
-    "server.js": "f1cce84e3a7c98d8b2e04c5029794b05a6ff84ca59bb41b1701a7b7185541916",
+    "server.js": "a5af13b4de0cd2fa6e2d2624467e14b3cd4ce5dace0608583a93afa70106b379",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
@@ -53,7 +53,8 @@
     "presence.js": "a2d3dbe67b923c8f7e3bb7e084e0751f38f81b792ae51d96b6ffad5a6e2b8066",
     "public/presence.js": "c6aad295432f642797dba903efe302ac90abf900928185efa15e6c783e7c84f8",
     "reply-format.js": "41f1ce8793cf0adc8232a178fabffe93e9164c066bbf94233321d30461759260",
-    "chat-history.js": "f3d1a79c6737eee670a6289b2eba40c68c3ed2fd5d07d45eaf2290d9b7d1ddfe"
+    "chat-history.js": "f3d1a79c6737eee670a6289b2eba40c68c3ed2fd5d07d45eaf2290d9b7d1ddfe",
+    "app-capabilities.js": "3b0d572b14288604db7b764ad260c91dbc909b4bddebd66c73f12dc36ddfb76f"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"

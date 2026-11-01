@@ -1,0 +1,8 @@
+const assert=require('node:assert/strict'),context=require('../app-capabilities');
+const enabled=context({proactive:{enabled:true,dailyLimit:6,idleMinutes:60,gapMinutes:120,allDay:true,weatherEnabled:true},route:'backup2',line1Ready:true,line2Ready:true,voiceReady:true,key:'NEVER_INCLUDE_SECRET',persona:'NEVER_INCLUDE_PRIVATE_PERSONA'});
+assert(enabled.includes('主动消息功能已经存在，当前开启'));assert(enabled.includes('6次尝试/日'));assert(enabled.includes('当前线路：备用线路2'));assert(enabled.includes('备用1已配置，备用2已配置'));assert(enabled.includes('朗读已配置'));assert(!enabled.includes('NEVER_INCLUDE'));assert(enabled.length<700,'keep factual context bounded');
+const disabled=context({proactive:{enabled:false,dailyLimit:3,idleMinutes:45,gapMinutes:180,allDay:false,start:9,end:22,weatherEnabled:false},route:'backup',line1Ready:true});
+assert(disabled.includes('主动消息功能已经存在，当前关闭'));assert(disabled.includes('3次尝试/日'));assert(disabled.includes('9:00至22:00'));assert(disabled.includes('天气已关闭'));assert(disabled.includes('备用2待配置'));assert(disabled.includes('朗读待配置'));assert(disabled.includes('关闭/待配置不等于未开发'));assert(!disabled.includes('当前开启'));
+const blocked=context({proactive:{enabled:true},blocked:true});assert(blocked.includes('模拟拉黑中暂停'));assert(blocked.includes('实时通话、iPhone锁屏推送尚未接入'));assert(blocked.includes('须用户在页面操作'));
+for(const feature of ['共读室','糖果罐','情侣大富翁','上传头像与背景','无痕与模型测试','主动消息'])assert(enabled.includes(feature));
+console.log('PASS: existing-vs-disabled capability facts; live route/settings/readiness changes; bounded context; no credential/persona leakage; honest user-action and unavailable-feature boundaries.');
