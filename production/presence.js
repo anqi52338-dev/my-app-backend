@@ -32,8 +32,10 @@ module.exports=function({kv,db,readBody,json,fail,send,isBusy,isBlocked,acquire,
     })();
     pendingWeather={key,promise};return promise;
   }
-  async function context() {
-    const p=prefs(),w=await weather();
+  async function context({proactive=false,allowWeather=true}={}) {
+    const p=prefs();
+    if(proactive&&!allowWeather)return `\n【主动消息的时间参考】现在是 ${stamp(now())}，时区 ${p.timezone}。时间仅供理解，不要附加日期、GMT/UTC 或时间标签。本轮不查询或附带天气、温度资料，不从历史温度推测当前天气，不调用搜索或其他工具查天气；接着已有聊天自然说话。\n`;
+    const w=await weather();
     return `\n【当前时间与当地天气｜应用提供的数据】\n现在是 ${stamp(now())}，时区 ${p.timezone}。历史消息的日期不是今天，不要把旧时间当现在。\n`+(w?`她所在地区：${w.location}。天气数据时间 ${w.time}（${w.timezone}），获取于 ${stamp(w.fetchedAt)}：${w.condition}，气温 ${w.temperature}℃，体感 ${w.feelsLike??'未知'}℃，今日 ${w.low??'未知'}～${w.high??'未知'}℃，今日最高降雨概率 ${w.rainChance??'未知'}%。天气为地区气象数据，不代表她正在室外。\n`:(p.weatherEnabled?'当地天气暂时获取失败，不要猜测温度、晴雨或谎称已查询。\n':'天气功能未开启，不要声称知道她当地天气。\n'))+'时间是后台参考数据，不是正文前缀。禁止在回复开头、每条气泡或结尾附加方括号时间、GMT/UTC、发送时间标签；只有她主动问时间日期或安排日程时才自然提到。天气也按需要使用，不必每句播报。\n';
   }
   const latestUser=()=>Number(db.prepare("SELECT MAX(ts) t FROM messages WHERE role='me' AND archived=0").get().t||0);
@@ -71,11 +73,14 @@ module.exports=function({kv,db,readBody,json,fail,send,isBusy,isBlocked,acquire,
     if((s.day===today?s.attempts||0:0)>=p.dailyLimit)return false;
     if(!acquire())return false;
     running=true;
-    const next={...s,day:today,attempts:(s.day===today?s.attempts||0:0)+1,sent:s.day===today?s.sent||0:0,lastAttempt:ts,lastError:''};
+    const key=locationKey(p),previousWeather=s.lastWeatherAttempt??s.lastSent??0;
+    const allowWeather=p.weatherEnabled&&((s.lastWeatherKey||key)!==key||!previousWeather||ts-previousWeather>=6*3600000);
+    const next={...s,day:today,attempts:(s.day===today?s.attempts||0:0)+1,sent:s.day===today?s.sent||0:0,lastAttempt:ts,lastError:'',lastWeatherAttempt:allowWeather?ts:previousWeather,lastWeatherKey:key};
     // Reserve before any network operation. Failed or interrupted attempts also count.
-    kv.set('proactiveState',next);
     try {
-      const sent=await send('【主动消息任务】这不是她新发来的消息。结合当前时间、当地天气和最近真实聊天，主动发一两条自然简短的问候或分享。不要虚构她的行程、位置、已读状态或你在现实做过的事；不要催她回复、制造紧急感或连续追问。没有合适内容时返回 {"text":"","sticker_id":null}。无需每次发表情。');
+      kv.set('proactiveState',next);
+      const task='【主动续聊任务】这不是她新发来的消息。先读所附的历史：优先承接你们最后一段真实聊天里还没说完的话、她提过的具体事情，再看你最近已经发过什么。发一两条自然简短的延续或分享，不要每次重开话题、重新问候或重复问同一个问题。她若尚未回复上一条主动消息，不要假装她已回答，也不要接连追问；没有值得补充的内容可以不发。最后一次她发消息是在 '+stamp(user)+'，上次主动发出是在 '+(s.lastSent?stamp(s.lastSent):'还没有')+'；注意真实时间间隔，旧话题不能当成今天正在发生的事。'+(allowWeather?'天气只是低频备用信息，不要惯例用天气开场；近期说过天气就换个与聊天有关的内容。':'本轮不要查询或提及天气和温度，不通过搜索、网页或工具查天气。')+'不要虚构她的行程、位置、已读状态或你在现实做过的事，不催回复、不制造紧急感。历史图片本轮不重新识图，只参考已有文字讨论，不猜图片。没有合适内容时返回 {"text":"","sticker_id":null}。无需每次发表情。';
+      const sent=await send(task,{proactive:true,allowWeather});
       if(sent){next.sent++;next.lastSent=now();}kv.set('proactiveState',next);return !!sent;
     }catch{next.lastError='生成失败，请检查当前线路；本次尝试已计入当天上限。';kv.set('proactiveState',next);return false;}
     finally{running=false;release();}

@@ -73,8 +73,8 @@ function background(excludeId) {
 }
 const toolStatus = { WebFetch: '在看你发的链接…', WebSearch: '在查资料…', Read: '在看图片…' };
 
-async function askClaude(body, { excludeId, onDelta, onStatus } = {}) {
-  body=(await presence.context())+body;
+async function askClaude(body, { excludeId, onDelta, onStatus, environment } = {}) {
+  body=(await presence.context(environment))+body;
   const p = profile();
   return claude.ask({
     systemPrompt: systemPrompt(), model: p.model, onDelta,
@@ -84,9 +84,9 @@ async function askClaude(body, { excludeId, onDelta, onStatus } = {}) {
 }
 
 // ===== 备用 API（OpenAI 兼容）=====
-async function backupComplete(messages, b = backup()) {
+async function backupComplete(messages, b = backup(), environment) {
   if(!chatRoutes.ready(b))throw new Error('当前线路没有完整配置，请先保存地址、Key 和模型');
-  const context=await presence.context();
+  const context=await presence.context(environment);
   messages=messages.map(m=>({...m}));
   if(messages[0]?.role==='system')messages[0].content+=context;else messages.unshift({role:'system',content:context});
   const res = await fetch(b.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
@@ -105,19 +105,20 @@ async function backupComplete(messages, b = backup()) {
   }
   return String(text).trim();
 }
-function backupContext(extra) {
+function backupContext(extra, options={}) {
   const p = profile();
-  const history = db.prepare('SELECT * FROM messages WHERE archived=0 ORDER BY id DESC LIMIT 30').all().reverse();
+  const history = require('./chat-history')(db,options);
   const times=history.map((m,i)=>`${i+1}. ${m.role==='me'?'她':'你'}：${presence.stamp(m.ts)}`).join('\n');
   const system = `${p.persona}${emotion.prompt(p)}\n\n【历史消息时间备注｜仅供理解，不属于聊天正文，不得照抄】\n${times}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
-  const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m) }))];
+  const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m,options) }))];
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
 }
-function backupContent(message) {
+function backupContent(message, {proactive=false}={}) {
   const text = (message.role === 'him' && message.type !== 'sticker' ? stickerSystem.decode(message.text).text : chatDescription(message)).trim() || (message.image ? '看看这张图' : '（这条历史回复正文不可用）');
   const stamped=text; // Message times live in separate system metadata, never inside assistant prose.
   if (message.role !== 'me' || !message.image || message.type === 'sticker') return stamped;
+  if(proactive)return stamped+'（历史图片，本轮未重新读取；只参考已有文字，不猜图片。）';
   const name = message.image;
   if (path.basename(name) !== name) throw new Error('图片文件名无效，请重新上传');
   const file = path.join(UPLOADS, name);
@@ -127,13 +128,16 @@ function backupContent(message) {
   const bytes = fs.readFileSync(file);
   return [{type:'text',text:stamped}, {type:'image_url',image_url:{url:`data:${mime};base64,${bytes.toString('base64')}`}}];
 }
-async function backupChat(last, candyContext, extra, b=backup()) {
-  const messages = backupContext();
+function chatMessages(candyContext, extra, options={}) {
+  const messages = backupContext(undefined,options);
   for (const message of messages) { if(message.role==='assistant') { const decoded=stickerSystem.decode(message.content); message.content=JSON.stringify({text:decoded.text,sticker_id:decoded.sticker?.id||null}); } }
   messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
   // Keep image blocks in every selected history turn; never silently retry without them.
   if(extra)messages.push({role:'user',content:extra});
-  return backupComplete(messages,b);
+  return messages;
+}
+async function backupChat(last, candyContext, extra, b=backup(), environment) {
+  return backupComplete(chatMessages(candyContext,extra,environment),b,environment);
 }
 // 生成一段不进聊天记录的文字（日记、朋友圈、评论）
 async function compose(task, image) {
@@ -219,15 +223,22 @@ async function generateReply() {
 const presence=require('./presence')({kv,db,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),isBusy:()=>busy||folding,isBlocked:()=>lifeSystem.prefs().blocked,
   acquire:()=>{if(busy||folding)return false;busy=true;return true;},
   release:()=>{busy=false;for(const res of listeners)res.end();listeners.clear();},
-  send:async task=>{
+  send:async (task,environment)=>{
     const b=backup(),route=chatRoutes.active();let text;
     if(route!=='subscription') {
       if(!backupReady())throw new Error('主动消息线路未配置');
-      text=await backupChat(null,'',task,b);
-    }else text=(await askClaude(task+stickerSystem.prompt())).text;
+      text=await backupChat(null,'',task,b,environment);
+    }else {
+      // Proactive generation cannot browse, search or reread files on its own.
+      const messages=chatMessages('',task,environment);
+      messages[0].content+=await presence.context(environment);
+      text=await runIsolated(messages[0].content,messages.slice(1),profile().model,{proactive:true});
+    }
     const reply=stickerSystem.decode(text);
     if(reply.malformed)throw new Error('主动消息格式不完整');
     if(!presence.prefs().enabled||lifeSystem.prefs().blocked||(!reply.text&&!reply.sticker))return false;
+    const key=reply.text.replace(/[\s\p{P}]/gu,'').toLowerCase();
+    if(key.length>=8&&db.prepare("SELECT text FROM messages WHERE archived=0 AND role='him' ORDER BY id DESC LIMIT 6").all().some(m=>stickerSystem.decode(m.text).text.replace(/[\s\p{P}]/gu,'').toLowerCase()===key))return false;
     const id=crypto.randomUUID(),messages=[];
     db.exec('BEGIN');
     try {

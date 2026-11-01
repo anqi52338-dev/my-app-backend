@@ -1,0 +1,6 @@
+const assert=require('node:assert/strict'),{EventEmitter}=require('node:events'),cp=require('node:child_process');
+const original=cp.spawn;let args,input;
+cp.spawn=(file,argv)=>{args=argv;const child=new EventEmitter();child.stdout=new EventEmitter();child.stdin=new EventEmitter();child.stdin.end=text=>{input=text;setImmediate(()=>{child.stdout.emit('data',Buffer.from(JSON.stringify({result:'fixture reply'})));child.emit('close',0);});};child.kill=()=>{};return child;};
+const isolated=require('../isolated');
+(async()=>{try{assert.equal(await isolated('system',[{role:'user',content:'history'}],'sonnet',{proactive:true}),'fixture reply');assert.equal(args[args.indexOf('--tools')+1],'');assert(args.includes('--strict-mcp-config'));assert(args.includes('--no-session-persistence'));assert(input.includes('选择后的主聊天记录'));assert(!input.includes('不包含主聊天'));
+await isolated('system',[],'sonnet');assert(input.includes('不包含主聊天'),'ordinary isolated windows stay isolated');console.log('PASS: subscription proactive generation has no tools/MCP/session persistence and receives selected main-chat context; other isolated windows unchanged.');}finally{cp.spawn=original;}})().catch(e=>{console.error(e);process.exitCode=1;});
