@@ -14,5 +14,6 @@ busy=true;await assert.rejects(request('/api/chat-route','PUT',{route:'backup'})
 await assert.rejects(request('/api/backup2','PUT',{maxTokens:65536}),e=>e.status===400);
 await request('/api/chat-route','PUT',{route:'subscription'});assert.equal(system.active(),'subscription');
 await request('/api/backup','PUT',{chat:true});assert.equal(system.active(),'backup','old clients preserve compatibility');
+await request('/api/backup3','PUT',{baseUrl:'https://three.example/v1',key:'key-three',model:'model-three'});assert.equal(system.active(),'backup');await request('/api/chat-route','PUT',{route:'backup3'});assert.equal(system.selected().key,'key-three');await request('/api/backup3/models','POST',{});assert.equal(modelKey,'key-three');await request('/api/backup3/test','POST',{});assert.equal(lastConfig.model,'model-three');assert.equal(system.config('backup2').key,'key-two');assert(!JSON.stringify(system.publicConfig('backup3')).includes('key-three'));
 console.log('PASS: existing route/key migration, separate credentials, explicit switching, independent tests/catalogs, no secret in state, same-host key binding, validation and busy switch protection.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

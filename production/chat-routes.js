@@ -5,19 +5,19 @@ module.exports=function({kv,readBody,json,fail,isBusy,complete,models}) {
     return {baseUrl:'',key:'',model:'',memory:true,...b,maxTokens:Number.isInteger(b.maxTokens)&&b.maxTokens>=256&&b.maxTokens<=4000?b.maxTokens:2048};
   };
   const active=()=>kv.get('chatRoute',config().chat?'backup':'subscription');
-  const selected=()=>config(active()==='backup2'?'backup2':'backup');
+  const selected=()=>config(['backup2','backup3'].includes(active())?active():'backup');
   const ready=b=>!!(b.baseUrl&&b.key&&b.model);
   const publicConfig=slot=>{const {key,...b}=config(slot);return {...b,chat:active()===slot,hasKey:!!key};};
   async function route(req,res,url) {
     const p=url.pathname;
     if(p==='/api/chat-route'&&req.method==='PUT') {
       const b=await readBody(req);
-      if(!['subscription','backup','backup2'].includes(b.route))throw fail(400,'请选择一条聊天线路');
+      if(!['subscription','backup','backup2','backup3'].includes(b.route))throw fail(400,'请选择一条聊天线路');
       if(isBusy())throw fail(409,'等当前回复或记忆整理结束后再切换线路');
       if(b.route!=='subscription'&&!ready(config(b.route)))throw fail(400,'先保存这条线路的地址、Key 和模型');
       kv.set('chatRoute',b.route);json(res,200,{route:active()});return true;
     }
-    const m=/^\/api\/(backup2?)(?:\/(models|test))?$/.exec(p);if(!m)return false;
+    const m=/^\/api\/(backup[23]?)(?:\/(models|test))?$/.exec(p);if(!m)return false;
     const slot=m[1],action=m[2];
     if(req.method==='PUT'&&!action) {
       const body=await readBody(req),old=config(slot),next={...old};

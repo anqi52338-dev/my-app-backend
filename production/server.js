@@ -74,7 +74,7 @@ function background(excludeId) {
 const toolStatus = { WebFetch: '在看你发的链接…', WebSearch: '在查资料…', Read: '在看图片…' };
 
 function appKnowledge() {
-  return require('./app-capabilities')({proactive:presence.prefs(),blocked:lifeSystem.prefs().blocked,voiceReady:voiceSystem.publicConfig().ready,route:chatRoutes.active(),line1Ready:chatRoutes.ready(chatRoutes.config('backup')),line2Ready:chatRoutes.ready(chatRoutes.config('backup2'))});
+  return require('./app-capabilities')({proactive:presence.prefs(),blocked:lifeSystem.prefs().blocked,voiceReady:voiceSystem.publicConfig().ready,route:chatRoutes.active(),line1Ready:chatRoutes.ready(chatRoutes.config('backup')),line2Ready:chatRoutes.ready(chatRoutes.config('backup2')),line3Ready:chatRoutes.ready(chatRoutes.config('backup3'))});
 }
 
 async function askClaude(body, { excludeId, onDelta, onStatus, environment } = {}) {
@@ -187,7 +187,7 @@ async function generateReply() {
     if (backup().chat) {
       if(!backupReady())throw new Error('所选备用线路尚未配置完整，请在设置中检查');
       emit({ type: 'status', text: '在想…' });
-      text = await backupChat(last, candyContext); src = chatRoutes.active()==='backup2'?'backup2':'backup';
+      text = await backupChat(last, candyContext); src = ['backup2','backup3'].includes(chatRoutes.active())?chatRoutes.active():'backup';
     } else {
       const current = last.turn_id ? db.prepare('SELECT * FROM messages WHERE archived=0 AND turn_id = ? ORDER BY id').all(last.turn_id) : [last];
       const body = '【角色状态】你们设定的小状态是“' + lifeSystem.prefs().mood + '”，仅作角色表达，不代表真实感受。\n' + current.map(m => chatDescription(m)).join('\n') + (last.image ? `\n（图片首帧在：${path.join(UPLOADS, stickerSystem.thumbnail(last))}）` : '') + stickerSystem.prompt() + candyContext;
@@ -197,7 +197,7 @@ async function generateReply() {
       } catch (e) {
         if (!backupReady() || partial) throw e;
         emit({ type: 'status', text: '订阅那边没回应，改走备用线路…' });
-        text = await backupChat(last, candyContext); src = chatRoutes.active()==='backup2'?'backup2':'backup';
+        text = await backupChat(last, candyContext); src = ['backup2','backup3'].includes(chatRoutes.active())?chatRoutes.active():'backup';
       }
     }
     const reply = stickerSystem.decode(text);
@@ -345,7 +345,7 @@ function throttle(req) {
 const publicState = async () => {
   return {
     lifePrefs: lifeSystem.prefs(), voice: voiceSystem.publicConfig(), profile: profile(), memory: kv.get('memory', ''), busy, folding,
-    backup:chatRoutes.publicConfig('backup'),backup2:chatRoutes.publicConfig('backup2'),chatRoute:chatRoutes.active(),presence:presence.publicState(),
+    backup:chatRoutes.publicConfig('backup'),backup2:chatRoutes.publicConfig('backup2'),backup3:chatRoutes.publicConfig('backup3'),chatRoute:chatRoutes.active(),presence:presence.publicState(),
     counts: { messages: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0').get().n, diary: db.prepare('SELECT COUNT(*) n FROM diary').get().n, pending: db.prepare('SELECT COUNT(*) n FROM messages WHERE archived=0 AND id > ?').get(kv.get('memUpTo', 0)).n },
     since: db.prepare('SELECT MIN(ts) t FROM messages').get().t || Date.now(),
     claude: await claude.status(),
