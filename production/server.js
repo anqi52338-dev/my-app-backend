@@ -91,14 +91,14 @@ async function askClaude(body, { excludeId, onDelta, onStatus, environment } = {
 async function backupComplete(messages, b = backup(), environment) {
   if(!chatRoutes.ready(b))throw new Error('当前线路没有完整配置，请先保存地址、Key 和模型');
   const context=appKnowledge()+await presence.context(environment);
-  messages=messages.map(m=>({...m}));
-  if(messages[0]?.role==='system')messages[0].content+=context;else messages.unshift({role:'system',content:context});
+  messages=require('./prompt-cache').prepare(messages,b,context,environment);
   const res = await fetch(b.baseUrl.replace(/\/+$/, '') + '/chat/completions', {
     method: 'POST', signal: AbortSignal.timeout(120000),
     headers: { 'content-type': 'application/json', authorization: 'Bearer ' + b.key },
     body: JSON.stringify({ model: b.model, messages, stream: false, max_tokens: b.maxTokens }),
   });
   const data = await res.json().catch(() => ({}));
+  if(res.ok&&b.slot)kv.set('cacheUsage:'+b.slot,require('./prompt-cache').usage(data));
   if (res.status === 402) throw new Error('API 余额或密钥可用预算不足以覆盖本次请求。可先降低最大输出长度；如果仍失败，再检查账户余额和密钥限额。');
   if (!res.ok) throw new Error(data?.error?.message || `备用 API 返回 ${res.status}`);
   const content = data?.choices?.[0]?.message?.content;
@@ -113,8 +113,8 @@ function backupContext(extra, options={}) {
   const p = profile();
   const history = require('./chat-history')(db,options);
   const times=history.map((m,i)=>`${i+1}. ${m.role==='me'?'她':'你'}：${presence.stamp(m.ts)}`).join('\n');
-  const system = `${p.persona}${emotion.prompt(p)}\n\n【历史消息时间备注｜仅供理解，不属于聊天正文，不得照抄】\n${times}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
-  const messages = [{ role: 'system', content: system }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m,options) }))];
+  const system = `${p.persona}${emotion.prompt(p)}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
+  const messages = [{ role: 'system', content: system, _runtimeContext:'\n【历史消息时间备注｜不要照抄】\n'+times+'\n' }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m,options) }))];
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
 }
@@ -135,7 +135,8 @@ function backupContent(message, {proactive=false}={}) {
 function chatMessages(candyContext, extra, options={}) {
   const messages = backupContext(undefined,options);
   for (const message of messages) { if(message.role==='assistant') { const decoded=stickerSystem.decode(message.content); message.content=JSON.stringify({text:decoded.text,sticker_id:decoded.sticker?.id||null}); } }
-  messages[0].content += (candyContext || '') + stickerSystem.prompt() + '\n角色设定的小状态：' + lifeSystem.prefs().mood;
+  messages[0].content += stickerSystem.prompt();
+  messages[0]._runtimeContext += (candyContext||'')+'\n角色设定的小状态：'+lifeSystem.prefs().mood;
   // Keep image blocks in every selected history turn; never silently retry without them.
   if(extra)messages.push({role:'user',content:extra});
   return messages;
@@ -235,7 +236,7 @@ const presence=require('./presence')({kv,db,readBody,json:(...args)=>json(...arg
     }else {
       // Proactive generation cannot browse, search or reread files on its own.
       const messages=chatMessages('',task,environment);
-      messages[0].content+=appKnowledge()+await presence.context(environment);
+      messages[0].content+=(messages[0]._runtimeContext||'')+appKnowledge()+await presence.context(environment);
       text=await runIsolated(messages[0].content,messages.slice(1),profile().model,{proactive:true});
     }
     const reply=stickerSystem.decode(text);

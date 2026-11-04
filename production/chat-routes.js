@@ -2,12 +2,12 @@
 module.exports=function({kv,readBody,json,fail,isBusy,complete,models}) {
   const config=(slot='backup')=>{
     const b=kv.get(slot,{});
-    return {baseUrl:'',key:'',model:'',memory:true,...b,maxTokens:Number.isInteger(b.maxTokens)&&b.maxTokens>=256&&b.maxTokens<=4000?b.maxTokens:2048};
+    return {baseUrl:'',key:'',model:'',memory:true,...b,slot,cacheEnabled:b.cacheEnabled!==false,maxTokens:Number.isInteger(b.maxTokens)&&b.maxTokens>=256&&b.maxTokens<=4000?b.maxTokens:2048};
   };
   const active=()=>kv.get('chatRoute',config().chat?'backup':'subscription');
   const selected=()=>config(['backup2','backup3'].includes(active())?active():'backup');
   const ready=b=>!!(b.baseUrl&&b.key&&b.model);
-  const publicConfig=slot=>{const {key,...b}=config(slot);return {...b,chat:active()===slot,hasKey:!!key};};
+  const publicConfig=slot=>{const {key,...b}=config(slot);return {...b,chat:active()===slot,hasKey:!!key,cacheUsage:kv.get('cacheUsage:'+slot,null)};};
   async function route(req,res,url) {
     const p=url.pathname;
     if(p==='/api/chat-route'&&req.method==='PUT') {
@@ -32,6 +32,7 @@ module.exports=function({kv,readBody,json,fail,isBusy,complete,models}) {
         next.maxTokens=body.maxTokens;
       }
       if(typeof body.memory==='boolean')next.memory=body.memory;
+      if(body.cacheEnabled!==undefined){if(typeof body.cacheEnabled!=='boolean')throw fail(400,'缓存开关不正确');next.cacheEnabled=body.cacheEnabled;}
       // Preserve the old endpoint contract without letting saving line 2 switch line 1.
       if(typeof body.chat==='boolean') {
         if(isBusy())throw fail(409,'等当前回复结束后再切换线路');
