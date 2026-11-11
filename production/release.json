@@ -1,5 +1,5 @@
 {
-  "snapshot": "20261111T065905Z",
+  "snapshot": "20261111T070803Z",
   "sha256": {
     "server.js": "97ac67f4feb08aec6a89722277494cbf70017f9ad247b997e47ee97944aeb1dc",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
@@ -12,14 +12,14 @@
     "parse_epub.py": "a2e89f4171cfece967d00492e3dc3423670b6e4f7ef79a342b93a9a5cd3d536b",
     "sticker-thumbnail.py": "60e3fbe2e02fead71cd8d6e73764b76a0770f3b05036440fcd7416cbc392cf38",
     "hooks/hook.cjs": "ffd42e2283c5de9e83334070fec61002b45d23f7f397c1f2c47d497446b5c2fe",
-    "public/app.js": "0aabd3bdcf71b6982306449113baed2f365c5fb5fc34c36c1e50e62e49c05cdd",
+    "public/app.js": "90a4c5d5c067d2874ba4bca06c3ab23c7a6429aea2416008f901b13b50d4e4aa",
     "public/bunny.js": "ec5286246c86b04ef411c7331d09056856d20b7580ce111dc854cac098998427",
     "public/fonts/cormorant-500.woff2": "8197bf53615ddc8c423f444c7f0eec63b7fa0ba093fcfbec60dfdd28429b0fc8",
     "public/fonts/cormorant-500i.woff2": "4fb55a7a6d564d428061fe12c82c896264bcc8b7f0b52840bf88e0db5b91256f",
     "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
     "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
     "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
-    "public/index.html": "63be82dfc2cad28855493afec102c03b673b08d9f57bc9dea66382cc63a2d579",
+    "public/index.html": "2089c86ca49710094e26a47c2eab72bb83c172d2409c98c9cbb60bb657746a72",
     "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
     "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
     "public/manifest.webmanifest": "ad390927a17951cbcc809892ceab23b8978607bf5315cd32e17ba0184a350290",
