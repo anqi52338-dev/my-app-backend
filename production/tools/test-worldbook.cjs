@@ -1,0 +1,22 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const wb=require('../worldbook');
+const empty={revision:0,books:[],schemes:[],activeSchemeId:null};
+let state=wb.validate({...empty,books:[{id:'a',name:'  世界A  ',content:'秘密设定：月亮书屋'},{id:'b',name:'世界B',content:'不要发送的世界B'}],schemes:[{id:'s',name:'日常',bookIds:['a']},{id:'t',name:'故事',bookIds:['b']}],activeSchemeId:'s'},empty);
+assert.equal(state.books[0].name,'世界A');assert.match(wb.context(state),/月亮书屋/);assert.doesNotMatch(wb.context(state),/不要发送的世界B/);
+assert.equal(wb.context({...state,activeSchemeId:null}),'');
+assert.throws(()=>wb.validate({...state,revision:0},state),e=>e.status===409);
+assert.throws(()=>wb.validate({...state,books:[...state.books,state.books[0]]},state),/重复/);
+assert.throws(()=>wb.validate({...state,schemes:[{id:'s',name:'方案',bookIds:['missing']}]},state),/不存在/);
+assert.throws(()=>wb.validate({...state,books:[{id:'a',name:'',content:''}]},state),/名称/);
+assert.throws(()=>wb.validate({...state,books:[{id:'a',name:'a',content:'x'.repeat(20001)}]},state),/20000/);
+assert.throws(()=>wb.validate({...state,books:[{id:'a',name:'a',content:'x'.repeat(15000)},{id:'b',name:'b',content:'y'.repeat(15000)}],schemes:[{id:'s',name:'s',bookIds:['a','b']}],activeSchemeId:'s'},state),/24000/);
+let busy=false,restarts=0,stored=empty,response;
+const service=wb({kv:{get:()=>stored,set:(k,v)=>stored=v},readBody:async req=>req.body,json:(res,status,value)=>response={status,value},fail:(status,msg)=>Object.assign(new Error(msg),{status}),isBusy:()=>busy,restart:()=>restarts++});
+(async()=>{
+ const url=new URL('http://localhost/api/worldbook');
+ await service.route({method:'PUT',body:{...state,revision:0}},null,url);assert.equal(restarts,1);
+ busy=true;await assert.rejects(service.route({method:'PUT',body:stored},null,url),/正在回复/);busy=false;
+ await service.route({method:'PUT',body:{...stored,books:[...stored.books,{id:'c',name:'不用的书',content:'abc'}]}},null,url);assert.equal(restarts,1);
+ console.log('Worldbook selection, validation, concurrency, busy guard and session reset tests passed');
+})().catch(e=>{console.error(e);process.exitCode=1;});

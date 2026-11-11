@@ -40,6 +40,7 @@ const kv = {
 if (!kv.get('secret')) kv.set('secret', crypto.randomBytes(24).toString('hex'));
 const profile = () => ({ emotionEnabled: true, emotionRules: emotion.DEFAULT_RULES, hisName: '哥哥', persona: DEFAULT_PERSONA, bg: 'damask', model: 'default', myAv: '', hisAv: '', ...kv.get('profile', {}) });
 const chatRoutes=require('./chat-routes')({kv,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),isBusy:()=>busy||folding,complete:(messages,b)=>backupComplete(messages,b),models:backupModels});
+const worldbook=require('./worldbook')({kv,readBody,json:(...args)=>json(...args),fail:(...args)=>fail(...args),isBusy:()=>busy||folding,restart:()=>claude.restartNext()});
 const backup=()=>({...chatRoutes.selected(),chat:chatRoutes.active()!=='subscription'});
 const backupReady=()=>chatRoutes.ready(chatRoutes.selected());
 const addMessage = (role, text, image, src, type = 'text', turnId = crypto.randomUUID(), stickerId = null, quote = null) => {
@@ -57,7 +58,7 @@ const stickerSystem = require('./stickers')({ db, uploads: UPLOADS, readBody, js
 const CHAT_STYLE = "聊天显示格式独立于角色设定：像微信一样按意思分成两到四条短消息，短消息之间空一行。很短的确认可以只有一条，不要为了分条重复内容或添加废话；需要详细解释时可以适当增加长度。不要用 Markdown、列表或标题。";
 function systemPrompt() {
   const p = profile();
-  return `${p.persona}${emotion.prompt(p)}
+  return `${p.persona}${emotion.prompt(p)}${worldbook.prompt()}
 
 ——
 【怎么聊】你正在一个叫「我们的家」的私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}
@@ -113,7 +114,7 @@ function backupContext(extra, options={}) {
   const p = profile();
   const history = require('./chat-history')(db,options);
   const times=history.map((m,i)=>`${i+1}. ${m.role==='me'?'她':'你'}：${presence.stamp(m.ts)}`).join('\n');
-  const system = `${p.persona}${emotion.prompt(p)}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
+  const system = `${p.persona}${emotion.prompt(p)}${worldbook.prompt()}\n\n你正在私人聊天小手机里和她发消息，她叫你「${p.hisName}」。口语、自然。${CHAT_STYLE}\n\n你记得的事：\n${kv.get('memory', '').trim() || '（还没有）'}`;
   const messages = [{ role: 'system', content: system, _runtimeContext:'\n【历史消息时间备注｜不要照抄】\n'+times+'\n' }, ...history.map((m) => ({ role: m.role === 'me' ? 'user' : 'assistant', content: backupContent(m,options) }))];
   if (extra) messages.push({ role: 'user', content: extra });
   return messages;
@@ -384,6 +385,7 @@ async function route(req, res) {
     return issue(res);
   }
   if (!authed(req)) throw fail(401, '请先输入口令');
+  if(await worldbook.route(req,res,url))return;
   if(await chatRoutes.route(req,res,url))return;
   if(await presence.route(req,res,url))return;
   if (await monopolySystem.route(req, res, url)) return;
@@ -529,7 +531,7 @@ async function route(req, res) {
 
 
   if (key === 'GET /api/export') {
-    const data = { monopoly:monopolySystem.export(), candy: await candySystem.export(), life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
+    const data = { worldbook:worldbook.state(), monopoly:monopolySystem.export(), candy: await candySystem.export(), life: lifeSystem.export(), lifePrefs: lifeSystem.prefs(), stickers: db.prepare('SELECT * FROM stickers ORDER BY id').all(), reading: { books: db.prepare('SELECT * FROM reading_books').all(), notes: db.prepare('SELECT * FROM reading_notes').all(), chat: db.prepare('SELECT * FROM reading_chat').all() }, exportedAt: new Date().toISOString(), profile: profile(), memory: kv.get('memory', ''), messages: db.prepare('SELECT * FROM messages ORDER BY id').all(), diary: db.prepare('SELECT * FROM diary ORDER BY id').all(), moments: db.prepare('SELECT * FROM moments ORDER BY id').all() };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'content-disposition': `attachment; filename="our-home-${new Date().toISOString().slice(0, 10)}.json"` });
     return res.end(JSON.stringify(data, null, 2));
   }
