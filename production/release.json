@@ -1,7 +1,7 @@
 {
-  "snapshot": "20261112T103016Z",
+  "snapshot": "20261112T114912Z",
   "sha256": {
-    "server.js": "bfcabca22fc728c78ecab72b42b8f2ccb360f29e9d2aae4c25a6e02c765d08fc",
+    "server.js": "f65017593977c51a79a24975953126ea1833fe8b83aa1a939fe17f108ef9a443",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
     "emotion.js": "8ae00116d607caf7be43d0020c446a171c2ea554fb135b83f4539f63f7e1cd3a",
     "reading.js": "32e6ff3db5029304a3c43655b0063963c139f8bfd1784521e5ce49606dbfb896",
@@ -12,14 +12,14 @@
     "parse_epub.py": "a2e89f4171cfece967d00492e3dc3423670b6e4f7ef79a342b93a9a5cd3d536b",
     "sticker-thumbnail.py": "60e3fbe2e02fead71cd8d6e73764b76a0770f3b05036440fcd7416cbc392cf38",
     "hooks/hook.cjs": "ffd42e2283c5de9e83334070fec61002b45d23f7f397c1f2c47d497446b5c2fe",
-    "public/app.js": "f607afe9d3c894ca8150b6f49575f8c2d60c4dd930b7a83e1b1c3996f5c22e07",
+    "public/app.js": "1835a05143af7c309bad71746b3c42c75bb8135c21cf6aaea318a1bcbe9c1a6a",
     "public/bunny.js": "ec5286246c86b04ef411c7331d09056856d20b7580ce111dc854cac098998427",
     "public/fonts/cormorant-500.woff2": "8197bf53615ddc8c423f444c7f0eec63b7fa0ba093fcfbec60dfdd28429b0fc8",
     "public/fonts/cormorant-500i.woff2": "4fb55a7a6d564d428061fe12c82c896264bcc8b7f0b52840bf88e0db5b91256f",
     "public/fonts/cormorant-600.woff2": "ae062b6d5ae308e7edf61b28b07b9984bbb6e961b1f34d9b2c2f4389c33f21ea",
     "public/fonts/pinyon.woff2": "3e1f69a201572cad4aabea7ccf720f093a7dbc005380b2a1b89e0b94476d3e42",
     "public/icon.svg": "df206819b8c6dfa895069b527d5241d1145785c50d2035d88e03fcda2c48db84",
-    "public/index.html": "b3f3d25e864bd72184f2ca61bad9bbb418b1dcd1ec258d313b7ce1956384e44d",
+    "public/index.html": "e045d7a3c3eeecfc1609611bcacb34c75661eddf4a862f8b6a77184ac48b0f85",
     "public/life.css": "abb66a99b2e3203d977cc5510ebb910ceb837a9d0d966e4c7ced9a84461dd831",
     "public/life.js": "466f80e38d2420abe439da2fb9b1351979e3cdd738befec14a82bb6181a8bf26",
     "public/manifest.webmanifest": "ad390927a17951cbcc809892ceab23b8978607bf5315cd32e17ba0184a350290",
@@ -59,9 +59,10 @@
     "worldbook.js": "9d8f9fa1c248dbc98030a17f238072c8b94d481a074c778f5f92a9e1f1707a89",
     "public/worldbook.js": "e38cfd68dcfefe085a0907525b00aaeb0a26675cf5f9bae146ff107ed20af092",
     "public/worldbook.css": "55aa6b30ca8711c3a82833c7bb1673c9787dccbcc4a8a2ddbde1d0cf8cf623d9",
-    "douyin.js": "03d3870735ca6eb251c15e4ffceab69b7e38d3b9f461a9cacfd65e5ad2b0bb57",
-    "douyin-bridge.py": "37d0f7e7c192daf6cb4eb123696ef5f9191fcae05d9253570e59470f5b17ba6d",
-    "public/douyin.js": "27f8f1c57e2d9529de7a9d8838e21c3713108960da64949f0289149a001c1289"
+    "douyin.js": "f456fd437aeff98209582d626d5cd91628ea737f6e82d6178eb5b921ed5ed6b3",
+    "douyin-bridge.py": "941a2ffb0d2e523ad851c2c57ff9756195c925f6756bd50900c0cf67f4272040",
+    "public/douyin.js": "4a714532a0e44792b3e1726465dba0217d3cd793e8f1c7131d42ccc63b849abc",
+    "douyin-dm.js": "f02d41ff5f2c2511cdf303127c8cc61d87a25a20f1b78f152c630735bfc7bb25"
   },
   "pythonDependencies": {
     "pillow": "12.3.0"

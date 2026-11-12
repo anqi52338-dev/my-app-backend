@@ -1,11 +1,95 @@
 import sys,json,re,time,hashlib,os
 from pathlib import Path
+from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright
-BODY=json.load(sys.stdin);action=BODY.get('action','read')
+BODY=json.load(sys.stdin);action=BODY.get('action','read');STAGE='连接浏览器'
 def fail(msg):print(json.dumps({'error':msg},ensure_ascii=False));sys.exit(0)
 try:
  with sync_playwright() as p:
   b=p.chromium.connect_over_cdp('http://127.0.0.1:3199',timeout=10000);c=b.contexts[0]
+  if action in ['dm-bind','dm-read','dm-send']:
+   handle=BODY.get('handle','');expected=BODY.get('secUid','')
+   if not re.fullmatch(r'[A-Za-z0-9_.-]{2,40}',handle):fail('请填写你的抖音号，不是昵称')
+   if action!='dm-bind' and not re.fullmatch(r'[A-Za-z0-9_-]{20,160}',expected):fail('私信身份尚未验证')
+   STAGE='打开私信窗口';page=None
+   for candidate in c.pages:
+    try:
+     if candidate.url.startswith('https://www.douyin.com/') and candidate.evaluate('window.name')=='ourhome-dm':page=candidate;break
+    except:pass
+   if not page:
+    page=next((x for x in c.pages if x.url.startswith('https://www.douyin.com/') and '/user/' not in x.url),None)
+    if not page:fail('请在服务器的原登录窗口打开抖音推荐页后重试')
+    page.evaluate("window.name='ourhome-dm'")
+   page.bring_to_front()
+   if '验证码' in page.title():fail('抖音私信需要人工验证，自动回复已暂停')
+   entry=page.locator('[data-e2e="im-entry"]');entry.wait_for(timeout=15000)
+   dialog=page.locator('[data-e2e="im-dialog"]')
+   if not dialog.count() or not dialog.is_visible():entry.first.click(timeout=5000)
+   dialog.wait_for(state='visible',timeout=10000)
+   cancel=dialog.locator('[class*=search_cancel]')
+   if cancel.count() and cancel.is_visible():cancel.click(timeout=3000)
+   STAGE='查找联系人';contacts=dialog.locator('[data-e2e="conversation-item"]');contacts.first.wait_for(state='attached',timeout=10000)
+   names=contacts.locator('[class~="conversationConversationItemtitle"]').all_text_contents()
+   order=list(range(min(contacts.count(),20)))
+   alias=BODY.get('nickname','')
+   if alias:order.sort(key=lambda i:0 if i<len(names) and names[i]==alias else 1)
+   verified=None
+   for index in [None]+order:
+    if index is not None:
+     if not contacts.nth(index).is_visible():continue
+     contacts.nth(index).click(timeout=5000)
+    header=dialog.locator('[class*=StackChatHeaderuser]')
+    if not header.count() or not header.is_visible():continue
+    popup=None
+    try:
+     with page.expect_popup(timeout=5000) as event:header.click(timeout=4000)
+     popup=event.value;popup.wait_for_url(re.compile(r'https://www\.douyin\.com/user/'),timeout=8000)
+     parsed=urlparse(popup.url)
+     if parsed.scheme!='https' or parsed.hostname!='www.douyin.com' or not parsed.path.startswith('/user/'):continue
+     sec=parsed.path.split('/user/',1)[1].strip('/')
+     if action=='dm-bind':
+      ok=False
+      for _ in range(20):
+       fields=popup.locator('[data-e2e="user-info"] > p.XtXz7asc > span.enTGrzPh').all_text_contents()
+       if any(re.fullmatch(r'抖音号[：:]?\s*'+re.escape(handle),value.strip()) for value in fields):ok=True;break
+       popup.wait_for_timeout(500)
+      if not ok:continue
+     elif sec!=expected:continue
+     verified={'handle':handle,'secUid':sec,'nickname':names[index] if index is not None and index<len(names) else (dialog.locator('[class~=StackLayoutStackChatHeadertitle]').inner_text() if dialog.locator('[class~=StackLayoutStackChatHeadertitle]').count() else alias)};break
+    except:continue
+    finally:
+     if popup:popup.close()
+   STAGE='核验联系人';
+   if not verified:fail('没有找到与你绑定抖音号匹配的会话；请先从本人账号发一条私信，不会向其他人回复')
+   if action in ['dm-bind','dm-read']:
+    STAGE='读取本人新消息';messages=dialog.locator('[class*=messageMessageBoxmessageBox]').evaluate_all(r'''(es)=>es.slice(-30).map(e=>{const box=e.querySelector('[data-e2e="msg-item-content"]');return {fromSelf:!!e.querySelector('[class*=isFromMe]'),text:box?(box.innerText||'').trim().slice(0,8000):'',links:box?[...box.querySelectorAll('a[href]')].map(a=>a.href).filter(h=>/^https:\/\/www\.douyin\.com\/(video|note)\/\d+/.test(h)):[],media:!!box?.querySelector('img,video')}})''')
+    for m in messages:
+     for link in m.pop('links',[]):
+      if link not in m['text']:m['text']+='\n'+link
+     if not m['text'] and m['media']:m['text']='[图片或表情，未读取原始媒体]'
+     m['signature']=hashlib.sha256(json.dumps([m['fromSelf'],m['text'],m['media']],ensure_ascii=False).encode()).hexdigest()
+    print(json.dumps({'identity':verified,'messages':messages},ensure_ascii=False));sys.exit(0)
+   text=BODY.get('text','')
+   if not isinstance(text,str) or not text.strip() or len(text)>2000:fail('私信正文需要 1～2000 字')
+   STAGE='准备私信输入';editor=dialog.locator('[contenteditable=true]').last
+   editor.wait_for(state='visible',timeout=5000)
+   if editor.inner_text().replace('\u200b','').strip():fail('私信输入框已有未发送内容，请先手动处理；系统没有覆盖或发送')
+   # Recipient was checked against immutable secUid immediately before this send.
+   STAGE='填写私信输入';editor.fill(text)
+   if BODY.get('dryRun'):
+    editor.fill('');print(json.dumps({'status':'prepared','recipientVerified':True}));sys.exit(0)
+   before_boxes=dialog.locator('[class*=messageMessageBoxmessageBox]');before=before_boxes.count()
+   before_tail=before_boxes.last.locator('[data-e2e=msg-item-content]').inner_text().strip() if before else ''
+   before_self=bool(before_boxes.last.locator('[class*=isFromMe]').count()) if before else False
+   editor.press('Enter',timeout=5000)
+   for _ in range(30):
+    boxes=dialog.locator('[class*=messageMessageBoxmessageBox]')
+    if boxes.count() and (boxes.count()>before or before_tail!=text.strip() or not before_self):
+     last=boxes.last
+     if last.locator('[class*=isFromMe]').count() and last.locator('[data-e2e="msg-item-content"]').inner_text().strip()==text.strip():
+      print(json.dumps({'status':'sent','recipientVerified':True}));sys.exit(0)
+    page.wait_for_timeout(300)
+   fail('私信发送结果待核实，请检查会话；系统不会重试')
   if action in ['read','status']:
    page=next((x for x in c.pages if x.url.startswith('https://www.douyin.com/')),None)
    if not page:fail('请先在服务器浏览器登录并打开抖音推荐页')
@@ -71,4 +155,4 @@ try:
     fail('发布结果待人工核实，系统不会自动重试' if clicked else stage+'未完成，本次没有点击发布')
    finally:q.close()
   fail('未知操作')
-except Exception as e:fail('服务器抖音连接暂不可用，请检查登录或验证状态')
+except Exception as e:fail('抖音连接或控件暂不可用（'+STAGE+'，'+type(e).__name__+'），请检查登录或页面状态')
