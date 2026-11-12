@@ -21,6 +21,8 @@ try:
     if not page:fail('请在服务器的原登录窗口打开抖音推荐页后重试')
     page.evaluate("window.name='ourhome-dm'")
    page.bring_to_front()
+   login=page.locator('[id^="login-full-panel"]')
+   if any(login.nth(i).is_visible() for i in range(login.count())):fail('抖音需要重新登录或身份验证，私信已暂停；请在服务器桌面完成后保存开关恢复')
    if '验证码' in page.title():fail('抖音私信需要人工验证，自动回复已暂停')
    entry=page.locator('[data-e2e="im-entry"]');entry.wait_for(timeout=15000)
    dialog=page.locator('[data-e2e="im-dialog"]')
@@ -28,23 +30,27 @@ try:
    dialog.wait_for(state='visible',timeout=10000)
    cancel=dialog.locator('[class*=search_cancel]')
    if cancel.count() and cancel.is_visible():cancel.click(timeout=3000)
-   STAGE='查找联系人';contacts=dialog.locator('[data-e2e="conversation-item"]');contacts.first.wait_for(state='attached',timeout=10000)
+   STAGE='查找联系人';contacts=dialog.locator('[data-e2e="conversation-item"]')
+   active=dialog.locator('[class*=StackChatHeaderuser]')
+   if not active.count() or not active.is_visible():contacts.first.wait_for(state='attached',timeout=10000)
    names=contacts.locator('[class~="conversationConversationItemtitle"]').all_text_contents()
    order=list(range(min(contacts.count(),20)))
    alias=BODY.get('nickname','')
    if alias:order.sort(key=lambda i:0 if i<len(names) and names[i]==alias else 1)
-   verified=None
+   verified=None;identity_error=''
    for index in [None]+order:
     if index is not None:
      if not contacts.nth(index).is_visible():continue
-     contacts.nth(index).click(timeout=5000)
+     try:contacts.nth(index).click(timeout=2000)
+     except:continue
     header=dialog.locator('[class*=StackChatHeaderuser]')
     if not header.count() or not header.is_visible():continue
     popup=None
     try:
+     STAGE='打开联系人主页'
      with page.expect_popup(timeout=5000) as event:header.click(timeout=4000)
-     popup=event.value;popup.wait_for_url(re.compile(r'https://www\.douyin\.com/user/'),timeout=8000)
-     parsed=urlparse(popup.url)
+     popup=event.value;STAGE='等待主页导航';popup.wait_for_url(re.compile(r'https://www\.douyin\.com/user/'),timeout=8000)
+     STAGE='核对固定身份';parsed=urlparse(popup.url)
      if parsed.scheme!='https' or parsed.hostname!='www.douyin.com' or not parsed.path.startswith('/user/'):continue
      sec=parsed.path.split('/user/',1)[1].strip('/')
      if action=='dm-bind':
@@ -55,12 +61,12 @@ try:
        popup.wait_for_timeout(500)
       if not ok:continue
      elif sec!=expected:continue
-     verified={'handle':handle,'secUid':sec,'nickname':names[index] if index is not None and index<len(names) else (dialog.locator('[class~=StackLayoutStackChatHeadertitle]').inner_text() if dialog.locator('[class~=StackLayoutStackChatHeadertitle]').count() else alias)};break
-    except:continue
+     verified={'handle':handle,'secUid':sec,'nickname':names[index] if index is not None and index<len(names) else (dialog.locator('[class~=StackLayoutStackChatHeadertitle]').first.inner_text() if dialog.locator('[class~=StackLayoutStackChatHeadertitle]').count() else alias)};break
+    except Exception as problem:identity_error=STAGE+' '+type(problem).__name__;continue
     finally:
      if popup:popup.close()
    STAGE='核验联系人';
-   if not verified:fail('没有找到与你绑定抖音号匹配的会话；请先从本人账号发一条私信，不会向其他人回复')
+   if not verified:fail('未能核验本人会话，不会向其他人回复。'+identity_error)
    if action in ['dm-bind','dm-read']:
     STAGE='读取本人新消息';messages=dialog.locator('[class*=messageMessageBoxmessageBox]').evaluate_all(r'''(es)=>es.slice(-30).map(e=>{const box=e.querySelector('[data-e2e="msg-item-content"]');return {fromSelf:!!e.querySelector('[class*=isFromMe]'),text:box?(box.innerText||'').trim().slice(0,8000):'',links:box?[...box.querySelectorAll('a[href]')].map(a=>a.href).filter(h=>/^https:\/\/www\.douyin\.com\/(video|note)\/\d+/.test(h)):[],media:!!box?.querySelector('img,video')}})''')
     for m in messages:
