@@ -1,5 +1,5 @@
 {
-  "snapshot": "20261112T120958Z",
+  "snapshot": "20261112T121959Z",
   "sha256": {
     "server.js": "f65017593977c51a79a24975953126ea1833fe8b83aa1a939fe17f108ef9a443",
     "claude.js": "3edaa7a18ad3ffa63756c7ecf26850dd771cd3541aec1a568cff4f28b118159b",
@@ -60,7 +60,7 @@
     "public/worldbook.js": "e38cfd68dcfefe085a0907525b00aaeb0a26675cf5f9bae146ff107ed20af092",
     "public/worldbook.css": "55aa6b30ca8711c3a82833c7bb1673c9787dccbcc4a8a2ddbde1d0cf8cf623d9",
     "douyin.js": "f456fd437aeff98209582d626d5cd91628ea737f6e82d6178eb5b921ed5ed6b3",
-    "douyin-bridge.py": "48bc8c1458e9fffb8e36c97ad26c1f98f3391da3053b3da761d03df59d589ec0",
+    "douyin-bridge.py": "f0d5d99cae49f044a924086360561f9b7db7e9566c08f788010458a12bae33f6",
     "public/douyin.js": "4a714532a0e44792b3e1726465dba0217d3cd793e8f1c7131d42ccc63b849abc",
     "douyin-dm.js": "38c148fb394af8dfbdf166d7941c4dea0dc4143e5cddaf5e604ba23d939c41b7"
   },

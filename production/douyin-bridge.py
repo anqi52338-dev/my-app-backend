@@ -21,7 +21,7 @@ try:
     if not page:fail('请在服务器的原登录窗口打开抖音推荐页后重试')
     page.evaluate("window.name='ourhome-dm'")
    page.bring_to_front()
-   login=page.locator('[id^="login-full-panel"]')
+   login=page.locator('[id^="login-full-panel"],[id^="login-full-panel"] > *')
    if any(login.nth(i).is_visible() for i in range(login.count())):fail('抖音需要重新登录或身份验证，私信已暂停；请在服务器桌面完成后保存开关恢复')
    if '验证码' in page.title():fail('抖音私信需要人工验证，自动回复已暂停')
    entry=page.locator('[data-e2e="im-entry"]');entry.wait_for(timeout=15000)
@@ -62,7 +62,10 @@ try:
       if not ok:continue
      elif sec!=expected:continue
      verified={'handle':handle,'secUid':sec,'nickname':names[index] if index is not None and index<len(names) else (dialog.locator('[class~=StackLayoutStackChatHeadertitle]').first.inner_text() if dialog.locator('[class~=StackLayoutStackChatHeadertitle]').count() else alias)};break
-    except Exception as problem:identity_error=STAGE+' '+type(problem).__name__;continue
+    except Exception as problem:
+     panel=page.locator('[id^="login-full-panel"],[id^="login-full-panel"] > *')
+     if any(panel.nth(i).is_visible() for i in range(panel.count())):fail('抖音需要重新登录或身份验证，私信已暂停；请在服务器桌面完成后保存开关恢复')
+     identity_error=STAGE+' '+type(problem).__name__;continue
     finally:
      if popup:popup.close()
    STAGE='核验联系人';
